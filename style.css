@@ -1,0 +1,210 @@
+/* ── Base ── */
+body {
+    font-family: 'Noto Sans HK', sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+}
+
+/* ── Background layers ── */
+#starsCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#fireworksCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.hk-skyline {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 300px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0,300 L0,200 L30,200 L30,180 L50,180 L50,150 L80,150 L80,220 L120,220 L120,130 L160,130 L160,90 L200,90 L200,160 L230,160 L230,110 L270,110 L270,170 L300,170 L300,80 L350,80 L350,50 L400,50 L400,120 L450,120 L450,190 L480,190 L480,140 L530,140 L530,180 L580,180 L580,100 L620,100 L620,150 L680,150 L680,70 L720,70 L720,160 L770,160 L770,90 L820,90 L820,170 L870,170 L870,110 L920,110 L920,180 L960,180 L960,130 L1010,130 L1010,190 L1050,190 L1050,140 L1100,140 L1100,210 L1150,210 L1150,170 L1200,170 L1200,300 Z" fill="rgba(255,255,255,0.05)"/></svg>');
+    background-size: cover;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ── Glass panel ── */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    animation: borderFlow 4s linear infinite;
+}
+
+/* ── Title animations ── */
+@keyframes titleGlow {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(251,191,36,0.6)) drop-shadow(0 5px 5px rgba(0,0,0,0.8)); }
+    50%       { filter: drop-shadow(0 0 20px rgba(251,191,36,1))  drop-shadow(0 5px 5px rgba(0,0,0,0.8)); }
+}
+.title-glow { animation: titleGlow 2.5s ease-in-out infinite; }
+
+@keyframes titleFloat {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-6px); }
+}
+.title-float { animation: titleFloat 3.5s ease-in-out infinite; }
+
+/* ── Machine animations ── */
+@keyframes machineShake {
+    0%, 100% { transform: translateX(0)    rotate(0deg); }
+    15%      { transform: translateX(-4px) rotate(-0.5deg); }
+    30%      { transform: translateX(4px)  rotate(0.5deg); }
+    45%      { transform: translateX(-3px) rotate(-0.3deg); }
+    60%      { transform: translateX(3px)  rotate(0.3deg); }
+    75%      { transform: translateX(-2px) rotate(-0.2deg); }
+    90%      { transform: translateX(2px)  rotate(0.2deg); }
+}
+.machine-shaking { animation: machineShake 0.15s linear infinite; }
+
+@keyframes machineGlow {
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(255,200,50,0.3)); }
+    50%       { filter: drop-shadow(0 0 30px rgba(255,200,50,0.9)) drop-shadow(0 0 60px rgba(255,100,50,0.4)); }
+}
+.machine-glowing { animation: machineGlow 0.3s ease-in-out infinite; }
+
+/* ── Winner display ── */
+@keyframes popUp {
+    0%   { transform: scale(0)   translateY(200px); opacity: 0; }
+    60%  { transform: scale(1.2) translateY(-20px); opacity: 1; }
+    100% { transform: scale(1)   translateY(0);     opacity: 1; }
+}
+.winner-ball-container        { display: none; animation: popUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+.winner-ball-container.active { display: flex; }
+
+@keyframes orbitSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+.orbit-ring         { animation: orbitSpin 3s linear infinite; }
+.orbit-ring-reverse { animation: orbitSpin 4s linear infinite reverse; }
+
+@keyframes winnerNameReveal {
+    0%   { transform: scale(0.3); opacity: 0; letter-spacing: 0.5em; }
+    60%  { transform: scale(1.1); opacity: 1; letter-spacing: 0.1em; }
+    100% { transform: scale(1);   opacity: 1; letter-spacing: normal; }
+}
+.winner-name-reveal { animation: winnerNameReveal 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+@keyframes slotFlash {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.7; transform: scale(0.95); }
+}
+.name-flashing { animation: slotFlash 0.1s linear infinite; }
+
+/* ── Lotto ball ── */
+.lotto-ball {
+    box-shadow: inset -10px -10px 20px rgba(0,0,0,0.5), inset 10px 10px 20px rgba(255,255,255,0.8);
+}
+
+/* ── Particle effects ── */
+@keyframes floatUpHeart {
+    0%   { transform: translateY(0)     scale(0.5) rotate(0deg);   opacity: 0; }
+    20%  { transform: translateY(-50px) scale(1.2) rotate(-10deg); opacity: 1; }
+    80%  { transform: translateY(-200px) scale(1)  rotate(10deg);  opacity: 0.8; }
+    100% { transform: translateY(-300px) scale(0.8) rotate(0deg);  opacity: 0; }
+}
+.heart-particle {
+    position: absolute;
+    bottom: 30%;
+    font-size: 2rem;
+    pointer-events: none;
+    animation: floatUpHeart 2s ease-out forwards;
+    z-index: 25;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* ── Spotlight sweep ── */
+@keyframes spotlight {
+    0%   { transform: translateX(-150%) skewX(-20deg); opacity: 0; }
+    10%  { opacity: 0.6; }
+    90%  { opacity: 0.6; }
+    100% { transform: translateX(250%)  skewX(-20deg); opacity: 0; }
+}
+.spotlight-beam {
+    position: absolute;
+    top: 0; left: 0;
+    width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    pointer-events: none;
+    animation: spotlight 2s ease-in-out infinite;
+}
+
+/* ── Button pulse ── */
+@keyframes btnPulse {
+    0%, 100% { box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 0 0   rgba(239,68,68,0.5); }
+    50%       { box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 0 15px rgba(239,68,68,0); }
+}
+#drawBtn:not(:disabled) { animation: btnPulse 2s ease-out infinite; }
+
+/* ── Glass border flow ── */
+@keyframes borderFlow {
+    0%   { border-color: rgba(251,191,36,0.5); }
+    33%  { border-color: rgba(239,68,68,0.5); }
+    66%  { border-color: rgba(59,130,246,0.5); }
+    100% { border-color: rgba(251,191,36,0.5); }
+}
+
+/* ── Pool count flash ── */
+@keyframes flashGreen {
+    0%   { color: #4ade80; transform: scale(1.4); }
+    100% { color: white;   transform: scale(1); }
+}
+.pool-flash { animation: flashGreen 0.5s ease-out forwards; }
+
+/* ── Help modal ── */
+#helpModal       { display: none; }
+#helpModal.open  { display: flex; }
+
+/* ── Mobile drawer ── */
+#sidePanel {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(160deg, rgba(15,23,60,0.97) 0%, rgba(30,58,130,0.97) 100%);
+    backdrop-filter: blur(16px);
+    overflow-y: auto;
+}
+@media (min-width: 768px) {
+    #sidePanel { background: transparent; backdrop-filter: none; overflow-y: visible; }
+}
+
+/* ── Responsive winner ball ── */
+#bigWinnerBall {
+    width:  min(82vw, 480px);
+    height: min(82vw, 480px);
+}
+#orbitContainer {
+    width:  min(92vw, 560px);
+    height: min(92vw, 560px);
+}
+#orbitContainer .orbit-ring:nth-child(1)  { width: min(90vw, 550px); height: min(90vw, 550px); }
+#orbitContainer .orbit-ring:nth-child(2),
+#orbitContainer .orbit-ring-reverse       { width: min(86vw, 530px); height: min(86vw, 530px); }
+#orbitContainer #orbitStar                { width: min(90vw, 550px); height: min(90vw, 550px); }
+
+/* ── Machine height (mobile) ── */
+@media (max-width: 767px) {
+    #machineWrapper {
+        height: calc(100dvh - 140px) !important;
+        max-height: none !important;
+    }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2);  border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
