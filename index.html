@@ -199,6 +199,39 @@
         /* 彩帶顏色 */
         .confetti-particle { position: absolute; pointer-events: none; }
 
+        /* 手機抽屜側邊欄 */
+        #sidePanel {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(160deg, rgba(15,23,60,0.97) 0%, rgba(30,58,130,0.97) 100%);
+            backdrop-filter: blur(16px);
+            overflow-y: auto;
+        }
+        @media (min-width: 768px) {
+            #sidePanel { background: transparent; backdrop-filter: none; overflow-y: visible; }
+        }
+
+        /* 獎球響應式大小 */
+        #bigWinnerBall {
+            width: min(82vw, 480px);
+            height: min(82vw, 480px);
+        }
+        #orbitContainer {
+            width: min(92vw, 560px);
+            height: min(92vw, 560px);
+        }
+        #orbitContainer .orbit-ring:nth-child(1) { width: min(90vw, 550px); height: min(90vw, 550px); }
+        #orbitContainer .orbit-ring:nth-child(2),
+        #orbitContainer .orbit-ring-reverse { width: min(86vw, 530px); height: min(86vw, 530px); }
+        #orbitContainer #orbitStar { width: min(90vw, 550px); height: min(90vw, 550px); }
+
+        /* 手機版機器高度 */
+        @media (max-width: 767px) {
+            #machineWrapper {
+                height: calc(100dvh - 140px) !important;
+                max-height: none !important;
+            }
+        }
+
         /* 幸運兒顯示文字放大入場 */
         @keyframes winnerNameReveal {
             0% { transform: scale(0.3); opacity: 0; letter-spacing: 0.5em; }
@@ -230,7 +263,7 @@
         }
     </style>
 </head>
-<body class="flex flex-col md:flex-row relative">
+<body class="flex relative">
 
     <!-- 星空背景 Canvas -->
     <canvas id="starsCanvas"></canvas>
@@ -241,8 +274,16 @@
     <!-- 背景天際線 -->
     <div class="hk-skyline"></div>
 
-    <!-- 左側控制面板 -->
-    <aside class="w-full md:w-1/3 lg:w-1/4 h-full p-4 z-10 flex flex-col gap-4">
+    <!-- 手機抽屜遮罩 -->
+    <div id="drawerOverlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black/60 z-30 hidden"></div>
+
+    <!-- 左側控制面板（手機：抽屜；桌面：固定側邊） -->
+    <aside id="sidePanel" class="fixed top-0 left-0 h-full w-4/5 max-w-xs -translate-x-full md:relative md:translate-x-0 md:w-1/3 lg:w-1/4 md:h-full p-4 z-40 flex flex-col gap-4 bg-transparent">
+
+        <!-- 手機關閉抽屜按鈕 -->
+        <div class="md:hidden flex justify-end mb-1">
+            <button onclick="toggleDrawer()" class="glass-panel px-3 py-1 rounded-lg text-sm text-gray-300">✕ 關閉</button>
+        </div>
 
         <div class="glass-panel p-4 flex-1 flex flex-col transition-all duration-300" id="listPanel">
             <div class="flex justify-between items-center mb-2">
@@ -284,8 +325,15 @@
 
     </aside>
 
-    <!-- 右側主舞台 -->
-    <main class="w-full md:w-2/3 lg:w-3/4 h-full relative z-10 flex flex-col items-center justify-center p-4">
+    <!-- 右側主舞台（手機全屏，桌面佔剩餘空間） -->
+    <main class="w-full md:w-2/3 lg:w-3/4 h-screen relative z-10 flex flex-col items-center justify-center p-4">
+
+        <!-- 手機漢堡按鈕 -->
+        <button onclick="toggleDrawer()" class="md:hidden fixed top-3 left-3 z-20 glass-panel p-2 rounded-lg" aria-label="開啟選單">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
 
         <!-- 標題 -->
         <div class="absolute top-3 text-center w-full z-20 pointer-events-none">
@@ -413,11 +461,11 @@
         <div id="winnerDisplay" class="absolute inset-0 z-30 winner-ball-container items-center justify-center bg-black/60 backdrop-blur-sm">
 
             <!-- 旋轉外光環 -->
-            <div class="absolute" id="orbitContainer" style="width:560px;height:560px;display:flex;align-items:center;justify-content:center;">
-                <div class="orbit-ring absolute" style="width:550px;height:550px;border-radius:50%;border:3px dashed rgba(251,191,36,0.7);pointer-events:none;"></div>
-                <div class="orbit-ring-reverse absolute" style="width:530px;height:530px;border-radius:50%;border:2px dashed rgba(255,255,255,0.4);pointer-events:none;"></div>
+            <div class="absolute" id="orbitContainer" style="display:flex;align-items:center;justify-content:center;">
+                <div class="orbit-ring absolute" style="border-radius:50%;border:3px dashed rgba(251,191,36,0.7);pointer-events:none;"></div>
+                <div class="orbit-ring-reverse absolute" style="border-radius:50%;border:2px dashed rgba(255,255,255,0.4);pointer-events:none;"></div>
                 <!-- 軌道上的小星星 -->
-                <div id="orbitStar" class="orbit-ring absolute" style="width:550px;height:550px;border-radius:50%;pointer-events:none;">
+                <div id="orbitStar" class="orbit-ring absolute" style="border-radius:50%;pointer-events:none;">
                     <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:1.2rem;">⭐</div>
                     <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-size:1rem;">✨</div>
                     <div style="position:absolute;left:-8px;top:50%;transform:translateY(-50%);font-size:1rem;">🌟</div>
@@ -425,7 +473,7 @@
                 </div>
             </div>
 
-            <div id="bigWinnerBall" class="relative w-96 h-96 md:w-[480px] md:h-[480px] rounded-full flex flex-col items-center justify-center lotto-ball border-4 border-white/30 transform transition-all" style="z-index:5;">
+            <div id="bigWinnerBall" class="relative rounded-full flex flex-col items-center justify-center lotto-ball border-4 border-white/30 transform transition-all" style="z-index:5;">
                 <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-black/40 to-transparent pointer-events-none"></div>
                 <div class="bg-white text-black rounded-full w-4/5 h-4/5 flex flex-col items-center justify-center shadow-inner relative z-10 border-4 border-gray-200">
                     <div id="winnerNumber" class="absolute top-4 left-6 text-2xl font-black text-gray-300 italic">49</div>
@@ -960,6 +1008,14 @@
                    .filter(n => n !== '')
                    .filter(n => !winners.includes(n));
         document.getElementById('poolCount').innerText = pool.length;
+    }
+
+    function toggleDrawer() {
+        const panel = document.getElementById('sidePanel');
+        const overlay = document.getElementById('drawerOverlay');
+        const isHidden = panel.classList.contains('-translate-x-full');
+        panel.classList.toggle('-translate-x-full', !isHidden);
+        overlay.classList.toggle('hidden', !isHidden);
     }
 
     function toggleNameList() {
