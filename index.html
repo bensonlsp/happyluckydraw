@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社署周年聚餐大抽獎 - 六合彩版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans HK', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+        }
+
+        /* 動態星空背景 */
+        #starsCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 全屏煙火/彩帶 Canvas */
+        #fireworksCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* 香港天際線背景 */
+        .hk-skyline {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 300px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0,300 L0,200 L30,200 L30,180 L50,180 L50,150 L80,150 L80,220 L120,220 L120,130 L160,130 L160,90 L200,90 L200,160 L230,160 L230,110 L270,110 L270,170 L300,170 L300,80 L350,80 L350,50 L400,50 L400,120 L450,120 L450,190 L480,190 L480,140 L530,140 L530,180 L580,180 L580,100 L620,100 L620,150 L680,150 L680,70 L720,70 L720,160 L770,160 L770,90 L820,90 L820,170 L870,170 L870,110 L920,110 L920,180 L960,180 L960,130 L1010,130 L1010,190 L1050,190 L1050,140 L1100,140 L1100,210 L1150,210 L1150,170 L1200,170 L1200,300 Z" fill="rgba(255,255,255,0.05)"/></svg>');
+            background-size: cover;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* 標題閃光效果 */
+        @keyframes titleGlow {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(251,191,36,0.6)) drop-shadow(0 5px 5px rgba(0,0,0,0.8)); }
+            50% { filter: drop-shadow(0 0 20px rgba(251,191,36,1)) drop-shadow(0 5px 5px rgba(0,0,0,0.8)); }
+        }
+        .title-glow {
+            animation: titleGlow 2.5s ease-in-out infinite;
+        }
+
+        /* 標題文字浮動 */
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .title-float {
+            animation: titleFloat 3.5s ease-in-out infinite;
+        }
+
+        /* 機器震動效果 */
+        @keyframes machineShake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            15% { transform: translateX(-4px) rotate(-0.5deg); }
+            30% { transform: translateX(4px) rotate(0.5deg); }
+            45% { transform: translateX(-3px) rotate(-0.3deg); }
+            60% { transform: translateX(3px) rotate(0.3deg); }
+            75% { transform: translateX(-2px) rotate(-0.2deg); }
+            90% { transform: translateX(2px) rotate(0.2deg); }
+        }
+        .machine-shaking {
+            animation: machineShake 0.15s linear infinite;
+        }
+
+        /* 機器光暈 */
+        @keyframes machineGlow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(255,200,50,0.3)); }
+            50% { filter: drop-shadow(0 0 30px rgba(255,200,50,0.9)) drop-shadow(0 0 60px rgba(255,100,50,0.4)); }
+        }
+        .machine-glowing {
+            animation: machineGlow 0.3s ease-in-out infinite;
+        }
+
+        /* 得獎球彈出動畫 */
+        @keyframes popUp {
+            0% { transform: scale(0) translateY(200px); opacity: 0; }
+            60% { transform: scale(1.2) translateY(-20px); opacity: 1; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .winner-ball-container {
+            display: none;
+            animation: popUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .winner-ball-container.active {
+            display: flex;
+        }
+
+        /* 幸運兒大球光暈脈衝 */
+        @keyframes winnerBallPulse {
+            0%, 100% { box-shadow: 0 0 30px 10px currentColor, inset -10px -10px 20px rgba(0,0,0,0.5), inset 10px 10px 20px rgba(255,255,255,0.8); }
+            50% { box-shadow: 0 0 60px 25px currentColor, inset -10px -10px 20px rgba(0,0,0,0.5), inset 10px 10px 20px rgba(255,255,255,0.8); }
+        }
+
+        /* 旋轉光環 */
+        @keyframes orbitSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .orbit-ring {
+            animation: orbitSpin 3s linear infinite;
+        }
+        .orbit-ring-reverse {
+            animation: orbitSpin 4s linear infinite reverse;
+        }
+
+        /* 姓名滾輪動畫 */
+        @keyframes slotFlash {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.95); }
+        }
+        .name-flashing {
+            animation: slotFlash 0.1s linear infinite;
+        }
+
+        /* 慶祝星星爆炸 */
+        @keyframes starBurst {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            50% { opacity: 1; }
+            100% { transform: scale(2.5) rotate(360deg); opacity: 0; }
+        }
+
+        /* 讚好心心特效 */
+        @keyframes floatUpHeart {
+            0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+            20% { transform: translateY(-50px) scale(1.2) rotate(-10deg); opacity: 1; }
+            80% { opacity: 0.8; transform: translateY(-200px) scale(1) rotate(10deg); }
+            100% { transform: translateY(-300px) scale(0.8) rotate(0deg); opacity: 0; }
+        }
+        .heart-particle {
+            position: absolute;
+            bottom: 30%;
+            font-size: 2rem;
+            pointer-events: none;
+            animation: floatUpHeart 2s ease-out forwards;
+            z-index: 25;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+
+        /* 六合彩球光影效果 */
+        .lotto-ball {
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.5), inset 10px 10px 20px rgba(255,255,255,0.8);
+        }
+
+        /* 裝飾燈閃爍 */
+        @keyframes lightBlink {
+            0%, 100% { opacity: 1; filter: brightness(1); }
+            50% { opacity: 0.3; filter: brightness(0.5); }
+        }
+
+        /* 倒數光束掃描 */
+        @keyframes spotlight {
+            0% { transform: translateX(-150%) skewX(-20deg); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { transform: translateX(250%) skewX(-20deg); opacity: 0; }
+        }
+        .spotlight-beam {
+            position: absolute;
+            top: 0; left: 0;
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            pointer-events: none;
+            animation: spotlight 2s ease-in-out infinite;
+        }
+
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+
+        /* 彩帶顏色 */
+        .confetti-particle { position: absolute; pointer-events: none; }
+
+        /* 幸運兒顯示文字放大入場 */
+        @keyframes winnerNameReveal {
+            0% { transform: scale(0.3); opacity: 0; letter-spacing: 0.5em; }
+            60% { transform: scale(1.1); opacity: 1; letter-spacing: 0.1em; }
+            100% { transform: scale(1); opacity: 1; letter-spacing: normal; }
+        }
+        .winner-name-reveal {
+            animation: winnerNameReveal 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* 攪珠按鈕脈衝 */
+        @keyframes btnPulse {
+            0%, 100% { box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 0 0 rgba(239,68,68,0.5); }
+            50% { box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 0 15px rgba(239,68,68,0); }
+        }
+        #drawBtn:not(:disabled) {
+            animation: btnPulse 2s ease-out infinite;
+        }
+
+        /* 流動邊框 */
+        @keyframes borderFlow {
+            0% { border-color: rgba(251,191,36,0.5); }
+            33% { border-color: rgba(239,68,68,0.5); }
+            66% { border-color: rgba(59,130,246,0.5); }
+            100% { border-color: rgba(251,191,36,0.5); }
+        }
+        .glass-panel {
+            animation: borderFlow 4s linear infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row relative">
+
+    <!-- 星空背景 Canvas -->
+    <canvas id="starsCanvas"></canvas>
+
+    <!-- 煙火/彩帶 Canvas (最頂層) -->
+    <canvas id="fireworksCanvas"></canvas>
+
+    <!-- 背景天際線 -->
+    <div class="hk-skyline"></div>
+
+    <!-- 左側控制面板 -->
+    <aside class="w-full md:w-1/3 lg:w-1/4 h-full p-4 z-10 flex flex-col gap-4">
+
+        <div class="glass-panel p-4 flex-1 flex flex-col transition-all duration-300" id="listPanel">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-xl font-bold text-yellow-300 flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    抽獎名單
+                </h2>
+                <button onclick="toggleNameList()" class="text-gray-300 hover:text-white transition-colors" title="隱藏/顯示名單">
+                    <svg id="listToggleIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </button>
+            </div>
+            <div id="listContainer" class="flex-1 flex flex-col min-h-0">
+                <p class="text-xs text-gray-300 mb-2">請貼上參與者名字 (每行一個)</p>
+                <textarea id="nameInput" class="w-full flex-1 bg-black/30 border border-white/20 rounded p-2 text-sm text-white resize-none focus:outline-none focus:border-yellow-400" placeholder="陳大文&#10;李小玲&#10;張三&#10;李四..."></textarea>
+                <div class="mt-2 text-sm text-gray-300 flex justify-between">
+                    <span>剩餘人數: <span id="poolCount" class="font-bold text-white">0</span></span>
+                    <button onclick="updatePool()" class="text-yellow-300 hover:text-yellow-100 underline text-xs">更新名單</button>
+                </div>
+                <!-- 音效開關 -->
+                <div class="mt-4 flex gap-2">
+                    <button onclick="toggleAudio()" id="audioBtn" class="w-full py-2 bg-gray-500/50 hover:bg-gray-500/80 rounded text-sm transition-colors border border-gray-400 flex justify-center items-center gap-1 text-gray-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h2.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+                        開啟音效
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel p-4 flex-1 flex flex-col">
+            <h2 class="text-xl font-bold mb-2 text-green-400 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                幸運兒紀錄
+            </h2>
+            <ul id="winnerList" class="flex-1 overflow-y-auto space-y-2 pr-2"></ul>
+            <button onclick="clearWinners()" class="mt-4 w-full py-2 bg-red-500/50 hover:bg-red-500/80 rounded text-sm transition-colors border border-red-400">
+                清除紀錄重置
+            </button>
+        </div>
+
+    </aside>
+
+    <!-- 右側主舞台 -->
+    <main class="w-full md:w-2/3 lg:w-3/4 h-full relative z-10 flex flex-col items-center justify-center p-4">
+
+        <!-- 標題 -->
+        <div class="absolute top-3 text-center w-full z-20 pointer-events-none">
+            <h1 class="text-2xl md:text-3xl lg:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 tracking-wider title-glow title-float">
+                政府社會工作主任協會
+            </h1>
+            <h2 class="text-lg md:text-2xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mt-1 tracking-widest">
+                周年聚餐大抽獎
+            </h2>
+        </div>
+
+        <!-- SVG 攪珠機 -->
+        <div class="relative" id="machineWrapper" style="height:calc(100vh - 190px); max-height:860px; aspect-ratio:1/1; margin-top:0;">
+            <!-- 聚光燈掃描效果 (攪珠中才顯示) -->
+            <div class="spotlight-beam hidden" id="spotlightBeam"></div>
+
+            <svg id="machineSvg" viewBox="0 0 700 600" class="w-full h-full drop-shadow-2xl">
+                <defs>
+                    <linearGradient id="baseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#1e293b" />
+                        <stop offset="50%" stop-color="#475569" />
+                        <stop offset="100%" stop-color="#1e293b" />
+                    </linearGradient>
+                    <radialGradient id="glassSphere" cx="35%" cy="35%" r="65%">
+                        <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
+                        <stop offset="40%" stop-color="rgba(255,255,255,0.1)" />
+                        <stop offset="80%" stop-color="rgba(15, 23, 42, 0.4)" />
+                        <stop offset="100%" stop-color="rgba(0, 0, 0, 0.7)" />
+                    </radialGradient>
+                    <radialGradient id="tubeGrad" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="rgba(255,255,255,0.2)" />
+                        <stop offset="100%" stop-color="rgba(255,255,255,0.05)" />
+                    </radialGradient>
+                    <!-- 發光濾鏡 -->
+                    <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                    <filter id="strongGlow" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="15" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+
+                <!-- 太平紳士見證席 -->
+                <g transform="translate(40, 420)" class="drop-shadow-lg">
+                    <rect x="0" y="60" width="160" height="100" fill="#334155" rx="4" />
+                    <rect x="0" y="60" width="160" height="15" fill="#1e293b" />
+                    <g transform="translate(40, 30)">
+                        <circle cx="0" cy="0" r="14" fill="#fcd34d" />
+                        <path d="M -20 30 C -15 10, 15 10, 20 30 Z" fill="#1e293b" />
+                        <path d="M -5 30 L 0 15 L 5 30 Z" fill="white" />
+                        <path d="M -2 20 L 0 30 L 2 20 Z" fill="#dc2626" />
+                    </g>
+                    <g transform="translate(120, 30)">
+                        <circle cx="0" cy="0" r="14" fill="#fcd34d" />
+                        <path d="M -20 30 C -15 10, 15 10, 20 30 Z" fill="#0f172a" />
+                        <path d="M -5 30 L 0 15 L 5 30 Z" fill="white" />
+                        <path d="M -2 20 L 0 30 L 2 20 Z" fill="#2563eb" />
+                    </g>
+                </g>
+
+                <!-- 攪珠機底座 -->
+                <path d="M 250 480 L 450 480 L 480 580 L 220 580 Z" fill="url(#baseGrad)" stroke="#475569" stroke-width="4"/>
+                <rect x="320" y="450" width="60" height="40" fill="#334155" />
+
+                <!-- 裝飾燈光條 -->
+                <line x1="260" y1="500" x2="440" y2="500" stroke="#fbbf24" stroke-width="2"/>
+                <line x1="250" y1="520" x2="450" y2="520" stroke="#fbbf24" stroke-width="2"/>
+                <circle cx="350" cy="540" r="15" fill="#ef4444" id="machineLight"/>
+
+                <!-- 裝飾彩燈 (底部一排) -->
+                <circle cx="285" cy="560" r="6" fill="#E23528" id="deco1" opacity="0.8"/>
+                <circle cx="310" cy="560" r="6" fill="#fbbf24" id="deco2" opacity="0.8"/>
+                <circle cx="335" cy="560" r="6" fill="#1D70B8" id="deco3" opacity="0.8"/>
+                <circle cx="360" cy="560" r="6" fill="#009045" id="deco4" opacity="0.8"/>
+                <circle cx="385" cy="560" r="6" fill="#fbbf24" id="deco5" opacity="0.8"/>
+                <circle cx="410" cy="560" r="6" fill="#E23528" id="deco6" opacity="0.8"/>
+
+                <!-- 玻璃球體 (背景) -->
+                <circle cx="350" cy="250" r="200" fill="url(#glassSphere)" stroke="rgba(255,255,255,0.4)" stroke-width="8" id="mainSphere"/>
+
+                <!-- 旋轉裝飾圈 (攪珠中才可見) -->
+                <g id="decorRing1" opacity="0" transform="translate(350,250)">
+                    <circle r="212" fill="none" stroke="rgba(251,191,36,0.6)" stroke-width="3" stroke-dasharray="20,15"/>
+                </g>
+                <g id="decorRing2" opacity="0" transform="translate(350,250)">
+                    <circle r="222" fill="none" stroke="rgba(239,68,68,0.4)" stroke-width="2" stroke-dasharray="10,25"/>
+                </g>
+
+                <!-- 內部攪拌臂 -->
+                <g id="mixerArm" transform="translate(350, 250)">
+                    <circle cx="0" cy="0" r="20" fill="#475569" />
+                    <rect x="-10" y="-150" width="20" height="300" fill="#cbd5e1" rx="10" opacity="0.3" />
+                </g>
+
+                <!-- 中央上升管 -->
+                <path d="M 330 450 L 370 450 L 370 50 L 330 50 Z" fill="url(#tubeGrad)" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                <path d="M 320 50 L 380 50 L 380 30 L 320 30 Z" fill="#475569" />
+
+                <!-- 小球群組 -->
+                <g id="ballsGroup"></g>
+
+                <!-- 玻璃球體反光前景 -->
+                <path d="M 170 140 A 160 160 0 0 1 480 90 A 190 190 0 0 0 160 270 Z" fill="rgba(255,255,255,0.2)" pointer-events="none"/>
+                <path d="M 460 380 A 120 120 0 0 0 540 250 A 190 190 0 0 1 370 440 Z" fill="rgba(255,255,255,0.1)" pointer-events="none"/>
+            </svg>
+
+            <!-- 抽獎按鈕 -->
+            <button id="drawBtn" onclick="startDraw()" class="absolute bottom-[-28px] left-1/2 transform -translate-x-1/2 px-14 py-5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold text-3xl rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.5)] border-4 border-yellow-400 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed z-20 tracking-widest">
+                開始攪珠
+            </button>
+        </div>
+
+        <!-- 心心讚好特效容器 -->
+        <div id="heartsContainer" class="absolute inset-0 pointer-events-none z-20 overflow-hidden"></div>
+
+        <!-- 顯示幸運兒的巨型六合彩球 -->
+        <div id="winnerDisplay" class="absolute inset-0 z-30 winner-ball-container items-center justify-center bg-black/60 backdrop-blur-sm">
+
+            <!-- 旋轉外光環 -->
+            <div class="absolute" id="orbitContainer" style="width:560px;height:560px;display:flex;align-items:center;justify-content:center;">
+                <div class="orbit-ring absolute" style="width:550px;height:550px;border-radius:50%;border:3px dashed rgba(251,191,36,0.7);pointer-events:none;"></div>
+                <div class="orbit-ring-reverse absolute" style="width:530px;height:530px;border-radius:50%;border:2px dashed rgba(255,255,255,0.4);pointer-events:none;"></div>
+                <!-- 軌道上的小星星 -->
+                <div id="orbitStar" class="orbit-ring absolute" style="width:550px;height:550px;border-radius:50%;pointer-events:none;">
+                    <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:1.2rem;">⭐</div>
+                    <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-size:1rem;">✨</div>
+                    <div style="position:absolute;left:-8px;top:50%;transform:translateY(-50%);font-size:1rem;">🌟</div>
+                    <div style="position:absolute;right:-8px;top:50%;transform:translateY(-50%);font-size:1.2rem;">⭐</div>
+                </div>
+            </div>
+
+            <div id="bigWinnerBall" class="relative w-96 h-96 md:w-[480px] md:h-[480px] rounded-full flex flex-col items-center justify-center lotto-ball border-4 border-white/30 transform transition-all" style="z-index:5;">
+                <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-black/40 to-transparent pointer-events-none"></div>
+                <div class="bg-white text-black rounded-full w-4/5 h-4/5 flex flex-col items-center justify-center shadow-inner relative z-10 border-4 border-gray-200">
+                    <div id="winnerNumber" class="absolute top-4 left-6 text-2xl font-black text-gray-300 italic">49</div>
+                    <span class="text-gray-500 text-sm font-bold mb-1">恭喜幸運兒</span>
+                    <span id="winnerText" class="text-5xl md:text-7xl font-black text-center px-4 break-words leading-tight">張三李四</span>
+                </div>
+            </div>
+
+            <button onclick="closeWinner()" class="absolute top-10 right-10 text-white hover:text-yellow-300">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="absolute bottom-10 text-xl font-bold text-yellow-300 animate-pulse">點擊任意處繼續</div>
+        </div>
+
+    </main>
+
+    <script>
+    // ====== 初始資料 ======
+    const defaultNames = [
+        "陳大文", "李小玲", "張子強", "黃美華", "何家明", "周芷若", "郭靖",
+        "黃蓉", "楊過", "小龍女", "令狐沖", "任盈盈", "張無忌", "趙敏"
+    ];
+
+    let pool = [];
+    let winners = [];
+    let drawnBallNumbers = new Set(); // 已抽出的波號，不可重複
+    let isDrawing = false;
+    let isNameListVisible = true;
+    let settleTimer = 0;
+
+    // 音效控制
+    let audioEnabled = false;
+    let audioCtx = null;
+    let drumRollTimeout = null;
+    let bgMusicNodes = [];
+    let decorLightInterval = null;
+
+    // 物理設定
+    const svgConfig = {
+        cx: 350, cy: 250, radius: 190,
+        ballRadius: 15, ballCount: 49,
+        tubeX: 350, tubeBottom: 430, tubeTop: 60
+    };
+    const markSixColors = ['#E23528', '#1D70B8', '#009045'];
+    let balls = [];
+    let animationFrameId;
+    let mixerAngle = 0;
+    let heartInterval = null;
+
+    // ====== 星空 Canvas ======
+    const starsCanvas = document.getElementById('starsCanvas');
+    const starsCtx = starsCanvas.getContext('2d');
+    let starsArr = [];
+
+    function initStars() {
+        starsCanvas.width = window.innerWidth;
+        starsCanvas.height = window.innerHeight;
+        starsArr = [];
+        for (let i = 0; i < 120; i++) {
+            starsArr.push({
+                x: Math.random() * starsCanvas.width,
+                y: Math.random() * starsCanvas.height * 0.7,
+                r: Math.random() * 1.5 + 0.3,
+                alpha: Math.random(),
+                dAlpha: (Math.random() - 0.5) * 0.02,
+                speed: Math.random() * 0.3 + 0.05
+            });
+        }
+    }
+
+    function drawStars() {
+        starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+        starsArr.forEach(s => {
+            s.alpha += s.dAlpha;
+            if (s.alpha <= 0 || s.alpha >= 1) s.dAlpha *= -1;
+            s.x -= s.speed;
+            if (s.x < 0) s.x = starsCanvas.width;
+            starsCtx.beginPath();
+            starsCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            starsCtx.fillStyle = `rgba(255,255,255,${Math.max(0, Math.min(1, s.alpha))})`;
+            starsCtx.fill();
+        });
+        requestAnimationFrame(drawStars);
+    }
+
+    // ====== 煙火 / 彩帶 Canvas ======
+    const fwCanvas = document.getElementById('fireworksCanvas');
+    const fwCtx = fwCanvas.getContext('2d');
+    let fwParticles = [];
+    let confettiParticles = [];
+    let fwAnimId = null;
+
+    function resizeCanvases() {
+        fwCanvas.width = starsCanvas.width = window.innerWidth;
+        fwCanvas.height = starsCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    // 煙火爆炸
+    function launchFirework(x, y, color) {
+        const count = 80 + Math.floor(Math.random() * 40);
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.3;
+            const speed = 3 + Math.random() * 6;
+            fwParticles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 1,
+                decay: 0.012 + Math.random() * 0.01,
+                color: color || `hsl(${Math.random() * 360},100%,60%)`,
+                size: 2 + Math.random() * 2,
+                trail: []
+            });
+        }
+    }
+
+    function launchMultipleFireworks() {
+        const colors = ['#ffd700','#ff4444','#44aaff','#44ff88','#ff88ff','#ffaa44'];
+        const positions = [
+            [fwCanvas.width * 0.25, fwCanvas.height * 0.3],
+            [fwCanvas.width * 0.75, fwCanvas.height * 0.25],
+            [fwCanvas.width * 0.5,  fwCanvas.height * 0.2],
+            [fwCanvas.width * 0.2,  fwCanvas.height * 0.45],
+            [fwCanvas.width * 0.8,  fwCanvas.height * 0.4],
+        ];
+        positions.forEach((pos, i) => {
+            setTimeout(() => {
+                launchFirework(pos[0], pos[1], colors[i % colors.length]);
+            }, i * 200);
+        });
+        // 第二波
+        setTimeout(() => {
+            positions.forEach((pos, i) => {
+                setTimeout(() => {
+                    launchFirework(
+                        pos[0] + (Math.random()-0.5)*120,
+                        pos[1] + (Math.random()-0.5)*80,
+                        colors[(i+3) % colors.length]
+                    );
+                }, i * 150);
+            });
+        }, 1200);
+    }
+
+    // 彩帶
+    function launchConfetti() {
+        const colors = ['#E23528','#1D70B8','#009045','#fbbf24','#f472b6','#a78bfa','#34d399'];
+        for (let i = 0; i < 200; i++) {
+            confettiParticles.push({
+                x: fwCanvas.width * 0.3 + Math.random() * fwCanvas.width * 0.4,
+                y: fwCanvas.height * 0.4,
+                vx: (Math.random() - 0.5) * 12,
+                vy: Math.random() * -14 - 4,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                w: 6 + Math.random() * 6,
+                h: 10 + Math.random() * 8,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.3,
+                life: 1,
+                decay: 0.004 + Math.random() * 0.004
+            });
+        }
+    }
+
+    function animateFireworks() {
+        fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+
+        // 煙火粒子
+        fwParticles = fwParticles.filter(p => p.life > 0);
+        fwParticles.forEach(p => {
+            p.trail.push({ x: p.x, y: p.y });
+            if (p.trail.length > 5) p.trail.shift();
+
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.08; // 重力
+            p.vx *= 0.98;
+            p.life -= p.decay;
+
+            // 繪製尾跡
+            p.trail.forEach((t, i) => {
+                const alpha = (i / p.trail.length) * p.life * 0.5;
+                fwCtx.beginPath();
+                fwCtx.arc(t.x, t.y, p.size * 0.5, 0, Math.PI * 2);
+                fwCtx.fillStyle = p.color.replace(')', `,${alpha})`).replace('hsl(', 'hsla(').replace('rgb(', 'rgba(') || `rgba(255,255,255,${alpha})`;
+                fwCtx.fill();
+            });
+
+            fwCtx.globalAlpha = p.life;
+            fwCtx.beginPath();
+            fwCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            fwCtx.fillStyle = p.color;
+            fwCtx.fill();
+            fwCtx.globalAlpha = 1;
+        });
+
+        // 彩帶粒子
+        confettiParticles = confettiParticles.filter(p => p.life > 0);
+        confettiParticles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.2;
+            p.vx *= 0.99;
+            p.rotation += p.rotSpeed;
+            p.life -= p.decay;
+
+            fwCtx.save();
+            fwCtx.globalAlpha = p.life;
+            fwCtx.translate(p.x, p.y);
+            fwCtx.rotate(p.rotation);
+            fwCtx.fillStyle = p.color;
+            fwCtx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+            fwCtx.restore();
+        });
+
+        fwAnimId = requestAnimationFrame(animateFireworks);
+    }
+
+    // ====== 音頻引擎 ======
+    function ensureAudioCtx() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    function toggleAudio() {
+        audioEnabled = !audioEnabled;
+        const btn = document.getElementById('audioBtn');
+        if (audioEnabled) {
+            ensureAudioCtx();
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"></path></svg> 關閉音效`;
+            btn.className = "w-full py-2 bg-green-500/50 hover:bg-green-500/80 rounded text-sm transition-colors border border-green-400 flex justify-center items-center gap-1 text-white";
+            playAmbientLoop();
+        } else {
+            stopAmbientLoop();
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h2.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg> 開啟音效`;
+            btn.className = "w-full py-2 bg-gray-500/50 hover:bg-gray-500/80 rounded text-sm transition-colors border border-gray-400 flex justify-center items-center gap-1 text-gray-200";
+        }
+    }
+
+    // 環境音樂（輕柔和弦 pad）
+    let ambientNodes = [];
+    function playAmbientLoop() {
+        if (!audioEnabled || !audioCtx) return;
+        stopAmbientLoop();
+        const ctx = audioCtx;
+
+        // 輕柔低音和弦墊
+        const chordFreqs = [130.81, 164.81, 196.00, 261.63]; // C3-E3-G3-C4
+        chordFreqs.forEach(freq => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
+
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            filter.type = 'lowpass';
+            filter.frequency.value = 800;
+
+            // 輕微顫音 LFO
+            const lfo = ctx.createOscillator();
+            const lfoGain = ctx.createGain();
+            lfo.frequency.value = 0.5;
+            lfoGain.gain.value = freq * 0.003;
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.025, ctx.currentTime + 2);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            lfo.start();
+            ambientNodes.push(osc, gain, lfo, lfoGain);
+        });
+
+        // 節拍打擊（輕輕的）
+        function beatTick() {
+            if (!audioEnabled || !audioCtx) return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+            g.gain.setValueAtTime(0.06, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.connect(g); g.connect(ctx.destination);
+            osc.start(now); osc.stop(now + 0.2);
+        }
+        ambientNodes._beatTimer = setInterval(beatTick, 800);
+    }
+
+    function stopAmbientLoop() {
+        if (ambientNodes._beatTimer) clearInterval(ambientNodes._beatTimer);
+        ambientNodes.forEach(n => {
+            try { if (n.stop) n.stop(); if (n.disconnect) n.disconnect(); } catch(e) {}
+        });
+        ambientNodes = [];
+    }
+
+    // 鼓擊滾動音（漸強鼓點）
+    let drumRollTimer = null;
+    function playDrumRoll(totalDuration = 3) {
+        if (!audioEnabled || !audioCtx) return;
+        const ctx = audioCtx;
+
+        // 停止舊的
+        if (drumRollTimer) clearInterval(drumRollTimer);
+
+        const startTime = Date.now();
+        let hitIndex = 0;
+
+        // 建立噪音緩衝器（鼓聲用）
+        function makeNoiseBuf(dur) {
+            const bufSize = Math.floor(ctx.sampleRate * dur);
+            const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+            return buf;
+        }
+
+        // 單次鼓擊
+        function drumHit(volume) {
+            const now = ctx.currentTime;
+            // 低鼓
+            const osc = ctx.createOscillator();
+            const oscGain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+            oscGain.gain.setValueAtTime(volume * 0.4, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.connect(oscGain); oscGain.connect(ctx.destination);
+            osc.start(now); osc.stop(now + 0.12);
+
+            // 噪音小鼓
+            const noise = ctx.createBufferSource();
+            noise.buffer = makeNoiseBuf(0.1);
+            const noiseFilter = ctx.createBiquadFilter();
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.value = 1800;
+            noiseFilter.Q.value = 0.8;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(volume * 0.3, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(ctx.destination);
+            noise.start(now); noise.stop(now + 0.1);
+        }
+
+        // 動態節奏：先慢後快
+        function scheduleNextHit() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const progress = Math.min(elapsed / totalDuration, 1);
+
+            // 指數加速：從 400ms 加速到 80ms
+            const interval = 400 * Math.pow(0.2, progress);
+            const volume = 0.1 + progress * 0.25;
+
+            drumHit(volume);
+            hitIndex++;
+
+            if (elapsed < totalDuration) {
+                drumRollTimer = setTimeout(scheduleNextHit, interval);
+            }
+        }
+        scheduleNextHit();
+    }
+
+    function stopDrumRoll() {
+        if (drumRollTimer) { clearTimeout(drumRollTimer); drumRollTimer = null; }
+    }
+
+    // 勝利號角旋律（六合彩風格）
+    function playFanfare() {
+        if (!audioEnabled || !audioCtx) return;
+        const ctx = audioCtx;
+
+        // NES 方波音色（Mario 標誌性音色）
+        function marioNote(freq, startSec, durSec, vol = 0.22) {
+            if (freq === 0) return; // 休止符
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const t = ctx.currentTime + startSec;
+            osc.type = 'square';
+            osc.frequency.value = freq;
+            // 短促 attack，有輕微 decay（8-bit 感）
+            gain.gain.setValueAtTime(0.001, t);
+            gain.gain.linearRampToValueAtTime(vol, t + 0.008);
+            gain.gain.setValueAtTime(vol * 0.75, t + durSec * 0.5);
+            gain.gain.linearRampToValueAtTime(0.001, t + durSec);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + durSec + 0.02);
+        }
+
+        // 三角波低音（NES triangle channel）
+        function bassNote(freq, startSec, durSec, vol = 0.14) {
+            if (freq === 0) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const t = ctx.currentTime + startSec;
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(vol, t);
+            gain.gain.linearRampToValueAtTime(0.001, t + durSec);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + durSec + 0.02);
+        }
+
+        // 噪音鼓（NES noise channel）
+        function noiseHit(startSec, vol = 0.06, durSec = 0.05) {
+            const bufSize = Math.floor(ctx.sampleRate * durSec);
+            const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            const g = ctx.createGain();
+            const t = ctx.currentTime + startSec;
+            g.gain.setValueAtTime(vol, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + durSec);
+            src.connect(g); g.connect(ctx.destination);
+            src.start(t); src.stop(t + durSec + 0.02);
+        }
+
+        // ── Super Mario Bros. Course Clear Fanfare ──
+        // BPM ≈ 160，每拍 = 0.375s，8分音符 = 0.1875s
+        const s = 0.1875; // 8分音符
+        const q = s * 2;  // 4分音符
+        const h = s * 4;  // 2分音符
+
+        // 音符頻率（Hz）
+        const G4=392.00, A4=440.00, C5=523.25, D5=587.33,
+              Eb5=622.25, E5=659.25, G5=783.99, Ab5=830.61,
+              A5=880.00,  C6=1046.5,
+              G3=196.00,  C4=261.63, E4=329.63, G4b=392.00;
+
+        // 旋律聲部
+        //  第一句：G C E G . E G
+        marioNote(G4,  0*s,     s*0.9);
+        marioNote(C5,  1*s,     s*0.9);
+        marioNote(E5,  2*s,     s*0.9);
+        marioNote(G5,  3*s,     q*0.9);      // 稍長
+        marioNote(E5,  3*s+q,   s*0.9);
+        marioNote(G5,  4*s+q,   q*0.9);
+
+        // 第二句：A Ab G Eb E（半音下行）
+        const t2 = 5*s+q;
+        marioNote(A5,  t2,      s*0.9);
+        marioNote(Ab5, t2+s,    s*0.9);
+        marioNote(G5,  t2+2*s,  s*0.9);
+        marioNote(Eb5, t2+3*s,  s*0.9);
+        marioNote(E5,  t2+4*s,  q*0.9);
+
+        // 第三句：G A C A C D
+        const t3 = t2+4*s+q;
+        marioNote(G4,  t3,      s*0.9);
+        marioNote(A4,  t3+s,    s*0.9);
+        marioNote(C5,  t3+2*s,  q*0.9);
+        marioNote(A4,  t3+2*s+q, s*0.9);
+        marioNote(C5,  t3+3*s+q, s*0.9);
+        marioNote(D5,  t3+4*s+q, q*0.9);
+
+        // 最終大音符 C6 ＋ 泛音和弦
+        const t4 = t3+4*s+2*q;
+        marioNote(C6,  t4,      h,   0.28);
+        marioNote(G5,  t4,      h,   0.10);
+        marioNote(E5,  t4,      h,   0.08);
+
+        // 低音聲部（三角波）
+        bassNote(G3, 0*s,  s*0.9);
+        bassNote(C4, 1*s,  s*0.9);
+        bassNote(E4, 2*s,  s*0.9);
+        bassNote(G4, 3*s,  q*0.9);
+        bassNote(G3, t2,   s*0.9);
+        bassNote(G3, t3,   q*0.9);
+        bassNote(C4, t4,   h);
+
+        // 鼓擊（噪音）
+        [0*s, t2, t3, t4].forEach(t => noiseHit(t, 0.07, 0.06));
+        // 最後一拍加一個重鼓
+        noiseHit(t4, 0.10, 0.12);
+    }
+
+    // ====== 閒置裝飾燈效果 ======
+    function startDecoLights() {
+        const lights = ['deco1','deco2','deco3','deco4','deco5','deco6'];
+        let idx = 0;
+        decorLightInterval = setInterval(() => {
+            lights.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.setAttribute('opacity', '0.3');
+            });
+            const el = document.getElementById(lights[idx]);
+            if (el) el.setAttribute('opacity', '1');
+            idx = (idx + 1) % lights.length;
+        }, 200);
+    }
+
+    // ====== 初始化 ======
+    window.onload = () => {
+        resizeCanvases();
+        document.getElementById('nameInput').value = defaultNames.join('\n');
+        updatePool();
+        initBalls();
+        animateBalls();
+        initStars();
+        drawStars();
+        animateFireworks();
+        startDecoLights();
+
+        document.getElementById('winnerDisplay').addEventListener('click', closeWinner);
+        document.getElementById('bigWinnerBall').addEventListener('click', e => e.stopPropagation());
+    };
+
+    // ====== 名單管理 ======
+    function updatePool() {
+        if (isDrawing) return;
+        const text = document.getElementById('nameInput').value;
+        pool = text.split('\n')
+                   .map(n => n.trim())
+                   .filter(n => n !== '')
+                   .filter(n => !winners.includes(n));
+        document.getElementById('poolCount').innerText = pool.length;
+    }
+
+    function toggleNameList() {
+        isNameListVisible = !isNameListVisible;
+        const container = document.getElementById('listContainer');
+        const icon = document.getElementById('listToggleIcon');
+        const panel = document.getElementById('listPanel');
+        if (isNameListVisible) {
+            container.style.display = 'flex';
+            panel.classList.add('flex-1');
+            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>`;
+        } else {
+            container.style.display = 'none';
+            panel.classList.remove('flex-1');
+            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`;
+        }
+    }
+
+    // ====== 初始化 SVG 小球 ======
+    function initBalls() {
+        const group = document.getElementById('ballsGroup');
+        group.innerHTML = '';
+        balls = [];
+
+        for (let i = 0; i < svgConfig.ballCount; i++) {
+            const color = markSixColors[i % 3];
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.random() * (svgConfig.radius - svgConfig.ballRadius);
+            const x = svgConfig.cx + r * Math.cos(angle);
+            const y = svgConfig.cy + r * Math.sin(angle);
+
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('r', svgConfig.ballRadius);
+            circle.setAttribute('fill', color);
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', '0'); text.setAttribute('y', '0');
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'central');
+            text.setAttribute('fill', 'white');
+            text.setAttribute('font-size', '14px');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('font-family', 'sans-serif');
+            text.setAttribute('dy', '1px');
+            text.textContent = i + 1;
+
+            const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            highlight.setAttribute('r', svgConfig.ballRadius / 3);
+            highlight.setAttribute('fill', 'rgba(255,255,255,0.4)');
+            highlight.setAttribute('cx', -svgConfig.ballRadius/3);
+            highlight.setAttribute('cy', -svgConfig.ballRadius/3);
+
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.appendChild(circle); g.appendChild(text); g.appendChild(highlight);
+            group.appendChild(g);
+
+            balls.push({
+                x, y, vx: 0, vy: 0, color, number: i+1,
+                el: g, circleEl: circle, highlightEl: highlight, isWinning: false
+            });
+        }
+        settleTimer = 180;
+    }
+
+    // ====== 物理動畫 ======
+    function animateBalls() {
+        if (isDrawing) {
+            mixerAngle += 20;
+        } else if (settleTimer > 0) {
+            settleTimer--;
+        }
+
+        const isFrozen = !isDrawing && settleTimer === 0;
+        const mixer = document.getElementById('mixerArm');
+        if (mixer) mixer.setAttribute('transform', `translate(${svgConfig.cx}, ${svgConfig.cy}) rotate(${mixerAngle})`);
+
+        balls.forEach(b => {
+            if (b.isWinning) return;
+            if (isDrawing) {
+                b.vx += (Math.random() - 0.5) * 6;
+                b.vy += (Math.random() - 0.5) * 6;
+                const speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+                if (speed > 16) { b.vx = (b.vx/speed)*16; b.vy = (b.vy/speed)*16; }
+            } else if (!isFrozen) {
+                b.vy += 0.8; b.vx *= 0.85; b.vy *= 0.85;
+            } else {
+                b.vx = 0; b.vy = 0;
+            }
+
+            if (!isFrozen) {
+                b.x += b.vx; b.y += b.vy;
+                const dx = b.x - svgConfig.cx;
+                const dy = b.y - svgConfig.cy;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > svgConfig.radius - svgConfig.ballRadius) {
+                    const nx = dx/dist, ny = dy/dist;
+                    const dot = b.vx*nx + b.vy*ny;
+                    if (dot > 0) {
+                        const restitution = isDrawing ? 0.9 : 0.1;
+                        b.vx -= (1+restitution)*dot*nx;
+                        b.vy -= (1+restitution)*dot*ny;
+                    }
+                    b.x = svgConfig.cx + nx*(svgConfig.radius - svgConfig.ballRadius);
+                    b.y = svgConfig.cy + ny*(svgConfig.radius - svgConfig.ballRadius);
+                }
+            }
+        });
+
+        // 球與球碰撞
+        if (!isFrozen) {
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i+1; j < balls.length; j++) {
+                    const b1 = balls[i], b2 = balls[j];
+                    if (b1.isWinning || b2.isWinning) continue;
+                    const dx = b2.x-b1.x, dy = b2.y-b1.y;
+                    const dist = Math.sqrt(dx*dx+dy*dy);
+                    const minDist = svgConfig.ballRadius*2;
+                    if (dist < minDist && dist > 0) {
+                        const overlap = minDist-dist;
+                        const nx = dx/dist, ny = dy/dist;
+                        b1.x -= nx*overlap*0.5; b1.y -= ny*overlap*0.5;
+                        b2.x += nx*overlap*0.5; b2.y += ny*overlap*0.5;
+                        if (!isDrawing) {
+                            const rvx = b2.vx-b1.vx, rvy = b2.vy-b1.vy;
+                            const vel = rvx*nx+rvy*ny;
+                            if (vel < 0) {
+                                const j2 = -(1+0.05)*vel/2;
+                                b1.vx -= j2*nx; b1.vy -= j2*ny;
+                                b2.vx += j2*nx; b2.vy += j2*ny;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        balls.forEach(b => {
+            if (!b.isWinning) b.el.setAttribute('transform', `translate(${b.x}, ${b.y})`);
+        });
+
+        animationFrameId = requestAnimationFrame(animateBalls);
+    }
+
+    // ====== 開始抽獎 ======
+    function startDraw() {
+        updatePool();
+        if (pool.length === 0) { alert("名單已空！請增加參與者。"); return; }
+
+        // 只重置未被抽走的波，已抽走的保持隱藏
+        balls.forEach(b => { if (!drawnBallNumbers.has(b.number)) b.isWinning = false; });
+        isDrawing = true;
+
+        const btn = document.getElementById('drawBtn');
+        btn.disabled = true;
+        btn.innerText = "攪珠中...";
+        document.getElementById('machineLight').setAttribute('fill', '#fbbf24');
+
+        // 機器震動 + 發光
+        const wrapper = document.getElementById('machineWrapper');
+        wrapper.classList.add('machine-shaking', 'machine-glowing');
+
+        // 聚光燈
+        document.getElementById('spotlightBeam').classList.remove('hidden');
+
+        // 裝飾圈顯示
+        document.getElementById('decorRing1').setAttribute('opacity', '1');
+        document.getElementById('decorRing2').setAttribute('opacity', '1');
+
+        // 音樂
+        if (audioEnabled) ensureAudioCtx();
+        playDrumRoll(3);
+
+        // 心心特效
+        heartInterval = setInterval(() => {
+            const container = document.getElementById('heartsContainer');
+            const heart = document.createElement('div');
+            const icons = ['❤️', '💖', '✨', '👍', '🎉', '🌟', '💫'];
+            heart.innerText = icons[Math.floor(Math.random() * icons.length)];
+            heart.className = 'heart-particle';
+            const leftOffset = 30 + Math.random() * 40;
+            heart.style.left = `${leftOffset}%`;
+            heart.style.marginLeft = `${(Math.random()-0.5)*100}px`;
+            container.appendChild(heart);
+            setTimeout(() => heart.remove(), 2000);
+        }, 150);
+
+        setTimeout(() => extractBall(), 3000);
+    }
+
+    // ====== 抽球動畫 ======
+    function extractBall() {
+        isDrawing = false;
+        settleTimer = 120;
+        stopDrumRoll();
+        if (heartInterval) clearInterval(heartInterval);
+
+        // 移除機器效果
+        const wrapper = document.getElementById('machineWrapper');
+        wrapper.classList.remove('machine-shaking', 'machine-glowing');
+        document.getElementById('spotlightBeam').classList.add('hidden');
+        document.getElementById('decorRing1').setAttribute('opacity', '0');
+        document.getElementById('decorRing2').setAttribute('opacity', '0');
+
+        const availableBalls = balls.filter(b => !drawnBallNumbers.has(b.number));
+        if (availableBalls.length === 0) {
+            // 所有波已抽完，重置波（但保留人名紀錄）
+            drawnBallNumbers.clear();
+            balls.forEach(b => { b.el.style.display = ''; });
+            return;
+        }
+        const targetBall = availableBalls[Math.floor(Math.random() * availableBalls.length)];
+        drawnBallNumbers.add(targetBall.number);
+        targetBall.isWinning = true;
+        targetBall.x = svgConfig.tubeX;
+        targetBall.y = svgConfig.tubeBottom;
+
+        // 球上升過程中的閃光音效
+        let upSpeed = 0;
+        let flashCount = 0;
+        const suckInterval = setInterval(() => {
+            upSpeed += 0.5;
+            targetBall.y -= upSpeed;
+            targetBall.el.setAttribute('transform', `translate(${targetBall.x}, ${targetBall.y})`);
+
+            // 上升中的嗶嗶聲
+            if (audioEnabled && audioCtx && flashCount % 3 === 0) {
+                const now = audioCtx.currentTime;
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = 'sine';
+                o.frequency.value = 400 + flashCount * 20;
+                g.gain.setValueAtTime(0.05, now);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(now); o.stop(now + 0.06);
+            }
+            flashCount++;
+
+            if (targetBall.y < svgConfig.tubeTop) {
+                clearInterval(suckInterval);
+                showResult(targetBall.color, targetBall.number);
+            }
+        }, 20);
+    }
+
+    // ====== 顯示結果（附姓名滾輪效果）======
+    function showResult(ballColor, ballNumber) {
+        const randomIndex = Math.floor(Math.random() * pool.length);
+        const winnerName = pool[randomIndex];
+        const winnerColor = ballColor;
+
+        // 先更新UI框架
+        document.getElementById('winnerNumber').innerText = ballNumber;
+        document.getElementById('winnerNumber').style.color = winnerColor === '#E23528' ? '#fca5a5' : (winnerColor === '#1D70B8' ? '#93c5fd' : '#86efac');
+        document.getElementById('bigWinnerBall').style.backgroundColor = winnerColor;
+        document.getElementById('bigWinnerBall').style.color = winnerColor;
+
+        // 顯示覆蓋層
+        const display = document.getElementById('winnerDisplay');
+        display.classList.add('active');
+
+        // 姓名滾輪效果：先快閃隨機名字，然後漸慢揭曉
+        const winnerTextEl = document.getElementById('winnerText');
+        winnerTextEl.className = 'text-5xl md:text-7xl font-black text-center px-4 break-words leading-tight name-flashing';
+        winnerTextEl.innerText = '???';
+
+        let flashSpeed = 60;
+        let elapsed = 0;
+        const totalFlashTime = 2000; // 2秒滾輪
+        const allNames = [...pool];
+
+        function doFlash() {
+            if (elapsed >= totalFlashTime) {
+                // 最終揭曉
+                winnerTextEl.classList.remove('name-flashing');
+                winnerTextEl.classList.add('winner-name-reveal');
+                winnerTextEl.innerText = winnerName;
+
+                // 記錄並更新
+                winners.push(winnerName);
+                updatePool();
+                updateWinnerList(winnerName, winnerColor, ballNumber);
+
+                // 音效 + 視覺慶祝
+                playFanfare();
+                launchMultipleFireworks();
+                launchConfetti();
+
+                document.getElementById('drawBtn').disabled = false;
+                document.getElementById('drawBtn').innerText = pool.length > 0 ? "繼續攪珠" : "攪珠結束";
+                document.getElementById('machineLight').setAttribute('fill', '#ef4444');
+                return;
+            }
+
+            // 隨機顯示名字
+            const rnd = allNames[Math.floor(Math.random() * allNames.length)];
+            winnerTextEl.innerText = rnd || '???';
+
+            // 指數減速
+            elapsed += flashSpeed;
+            flashSpeed = Math.min(60 + elapsed * 0.08, 200);
+            setTimeout(doFlash, flashSpeed);
+        }
+
+        // 略微延遲再開始滾輪（等球彈出動畫）
+        setTimeout(doFlash, 300);
+    }
+
+    function closeWinner() {
+        document.getElementById('winnerDisplay').classList.remove('active');
+        // 隱藏已抽出的波（令它從機器中消失）
+        balls.forEach(b => {
+            if (drawnBallNumbers.has(b.number)) {
+                b.el.style.display = 'none';
+            }
+        });
+        // 清除煙火（讓它自然消失）
+        setTimeout(() => {
+            fwParticles = [];
+            confettiParticles = [];
+        }, 3000);
+    }
+
+    // ====== 更新中獎名單 ======
+    function updateWinnerList(name, color, ballNumber) {
+        const list = document.getElementById('winnerList');
+        const li = document.createElement('li');
+        li.className = 'bg-white/10 p-2 rounded flex items-center gap-3';
+        const colorCode = color === '#E23528' ? 'bg-red-500' : (color === '#1D70B8' ? 'bg-blue-600' : 'bg-green-600');
+        li.innerHTML = `
+            <div class="w-7 h-7 rounded-full shadow-inner border border-white/50 flex-shrink-0 flex items-center justify-center ${colorCode}">
+                <span class="text-white text-[10px] font-bold">${ballNumber}</span>
+            </div>
+            <span class="font-bold text-lg">${name}</span>
+        `;
+        list.insertBefore(li, list.firstChild);
+    }
+
+    function clearWinners() {
+        if (confirm("確定要清除所有中獎紀錄嗎？名單將會重置。")) {
+            winners = [];
+            drawnBallNumbers.clear();
+            // 恢復所有被隱藏的波
+            balls.forEach(b => { b.el.style.display = ''; b.isWinning = false; });
+            document.getElementById('winnerList').innerHTML = '';
+            updatePool();
+            document.getElementById('drawBtn').innerText = "開始攪珠";
+        }
+    }
+    </script>
+</body>
+</html>
