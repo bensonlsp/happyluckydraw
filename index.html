@@ -378,6 +378,22 @@
             </svg>
         </button>
 
+        <!-- 音效按鈕（固定右上角，隨時可按）-->
+        <button onclick="toggleAudio()" id="audioBtnMain"
+            class="fixed top-3 right-3 z-20 glass-panel px-3 py-2 rounded-lg flex items-center gap-1 text-sm text-gray-300 hover:text-white transition-colors"
+            aria-label="音效開關">
+            <!-- 靜音圖示（預設）-->
+            <svg id="audioIconOff" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h2.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+            </svg>
+            <!-- 有聲圖示（開啟時顯示）-->
+            <svg id="audioIconOn" class="w-5 h-5 hidden text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"/>
+            </svg>
+            <span id="audioLabelMain" class="hidden sm:inline">音效</span>
+        </button>
+
         <!-- 標題 -->
         <div class="absolute top-3 text-center w-full z-20 pointer-events-none">
             <h1 id="mainTitle" class="text-2xl md:text-3xl lg:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 tracking-wider title-glow title-float">
@@ -388,8 +404,14 @@
             </h2>
         </div>
 
+        <!-- 已抽出波條（機器頂部）-->
+        <div id="drawnBallsBar" class="absolute z-20 flex items-center gap-1 flex-wrap justify-center px-2"
+            style="top:88px; left:50%; transform:translateX(-50%); max-width:90%; min-height:28px;">
+            <!-- 已抽波球由 JS 填入 -->
+        </div>
+
         <!-- SVG 攪珠機 -->
-        <div class="relative" id="machineWrapper" style="height:calc(100vh - 190px); max-height:860px; aspect-ratio:1/1; margin-top:0;">
+        <div class="relative" id="machineWrapper" style="height:calc(100vh - 210px); max-height:840px; aspect-ratio:1/1; margin-top:0;">
             <!-- 聚光燈掃描效果 (攪珠中才顯示) -->
             <div class="spotlight-beam hidden" id="spotlightBeam"></div>
 
@@ -780,16 +802,34 @@
 
     function toggleAudio() {
         audioEnabled = !audioEnabled;
-        const btn = document.getElementById('audioBtn');
+        syncAudioUI();
         if (audioEnabled) {
             ensureAudioCtx();
-            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"></path></svg> 關閉音效`;
-            btn.className = "w-full py-2 bg-green-500/50 hover:bg-green-500/80 rounded text-sm transition-colors border border-green-400 flex justify-center items-center gap-1 text-white";
             playAmbientLoop();
         } else {
             stopAmbientLoop();
-            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h2.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg> 開啟音效`;
-            btn.className = "w-full py-2 bg-gray-500/50 hover:bg-gray-500/80 rounded text-sm transition-colors border border-gray-400 flex justify-center items-center gap-1 text-gray-200";
+        }
+    }
+
+    function syncAudioUI() {
+        // 側邊欄按鈕
+        const btn = document.getElementById('audioBtn');
+        if (btn) {
+            if (audioEnabled) {
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"></path></svg> 關閉音效`;
+                btn.className = "w-full py-2 bg-green-500/50 hover:bg-green-500/80 rounded text-sm transition-colors border border-green-400 flex justify-center items-center gap-1 text-white";
+            } else {
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h2.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg> 開啟音效`;
+                btn.className = "w-full py-2 bg-gray-500/50 hover:bg-gray-500/80 rounded text-sm transition-colors border border-gray-400 flex justify-center items-center gap-1 text-gray-200";
+            }
+        }
+        // 主舞台按鈕
+        const mainBtn = document.getElementById('audioBtnMain');
+        if (mainBtn) {
+            document.getElementById('audioIconOff').classList.toggle('hidden', audioEnabled);
+            document.getElementById('audioIconOn').classList.toggle('hidden', !audioEnabled);
+            mainBtn.classList.toggle('text-green-400', audioEnabled);
+            mainBtn.classList.toggle('text-gray-300', !audioEnabled);
         }
     }
 
@@ -1422,15 +1462,36 @@
         document.getElementById('winnerDisplay').classList.remove('active');
         // 隱藏已抽出的波（令它從機器中消失）
         balls.forEach(b => {
-            if (drawnBallNumbers.has(b.number)) {
-                b.el.style.display = 'none';
-            }
+            if (drawnBallNumbers.has(b.number)) b.el.style.display = 'none';
         });
+        refreshDrawnBallsBar();
         // 清除煙火（讓它自然消失）
-        setTimeout(() => {
-            fwParticles = [];
-            confettiParticles = [];
-        }, 3000);
+        setTimeout(() => { fwParticles = []; confettiParticles = []; }, 3000);
+    }
+
+    // 重新渲染頂部已抽波條
+    function refreshDrawnBallsBar() {
+        const bar = document.getElementById('drawnBallsBar');
+        if (!bar) return;
+        bar.innerHTML = '';
+        drawnBallNumbers.forEach(num => {
+            const ball = balls.find(b => b.number === num);
+            if (!ball) return;
+            const colorMap = { '#E23528': '#ef4444', '#1D70B8': '#3b82f6', '#009045': '#22c55e' };
+            const hex = colorMap[ball.color] || ball.color;
+            const el = document.createElement('div');
+            el.style.cssText = `
+                width:26px; height:26px; border-radius:50%;
+                background:${hex};
+                box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5), inset 3px 3px 6px rgba(255,255,255,0.5);
+                display:flex; align-items:center; justify-content:center;
+                font-size:10px; font-weight:900; color:white;
+                flex-shrink:0; border:1px solid rgba(255,255,255,0.4);
+            `;
+            el.textContent = num;
+            el.title = `第 ${num} 號球`;
+            bar.appendChild(el);
+        });
     }
 
     // ====== 更新中獎名單 ======
@@ -1452,9 +1513,9 @@
         if (confirm("確定要清除所有中獎紀錄嗎？名單將會重置。")) {
             winners = [];
             drawnBallNumbers.clear();
-            // 恢復所有被隱藏的波
             balls.forEach(b => { b.el.style.display = ''; b.isWinning = false; });
             document.getElementById('winnerList').innerHTML = '';
+            document.getElementById('drawnBallsBar').innerHTML = '';
             updatePool();
             document.getElementById('drawBtn').innerText = "開始攪珠";
         }
