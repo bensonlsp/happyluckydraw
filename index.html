@@ -804,10 +804,9 @@
         audioEnabled = !audioEnabled;
         syncAudioUI();
         if (audioEnabled) {
-            ensureAudioCtx();
-            playAmbientLoop();
+            try { ensureAudioCtx(); } catch(e) { audioEnabled = false; syncAudioUI(); }
         } else {
-            stopAmbientLoop();
+            stopDrawingMusic();
         }
     }
 
@@ -833,143 +832,106 @@
         }
     }
 
-    // 環境音樂（輕柔和弦 pad）
-    let ambientNodes = [];
-    function playAmbientLoop() {
-        if (!audioEnabled || !audioCtx) return;
-        stopAmbientLoop();
-        const ctx = audioCtx;
+    // ====== 音樂引擎（重寫）======
+    // 規則：攪珠中→循環音樂，抽出→勝利號角，閒置→無聲
+    let drawMusicActive = false;
+    let drawMusicTimer = null;
 
-        // 輕柔低音和弦墊
-        const chordFreqs = [130.81, 164.81, 196.00, 261.63]; // C3-E3-G3-C4
-        chordFreqs.forEach(freq => {
+    // 噪音 buffer 工廠
+    function makeNoise(dur) {
+        const ctx = audioCtx;
+        const n = Math.floor(ctx.sampleRate * dur);
+        const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+        return buf;
+    }
+
+    // 單音排程（短促，自動結束）
+    function sched(freq, t, dur, vol, type = 'square', endFreq = null) {
+        try {
+            const ctx = audioCtx;
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-            const filter = ctx.createBiquadFilter();
-
-            osc.type = 'sine';
-            osc.frequency.value = freq;
-            filter.type = 'lowpass';
-            filter.frequency.value = 800;
-
-            // 輕微顫音 LFO
-            const lfo = ctx.createOscillator();
-            const lfoGain = ctx.createGain();
-            lfo.frequency.value = 0.5;
-            lfoGain.gain.value = freq * 0.003;
-            lfo.connect(lfoGain);
-            lfoGain.connect(osc.frequency);
-
-            gain.gain.setValueAtTime(0, ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.025, ctx.currentTime + 2);
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(ctx.destination);
-
-            osc.start();
-            lfo.start();
-            ambientNodes.push(osc, gain, lfo, lfoGain);
-        });
-
-        // 節拍打擊（輕輕的）
-        function beatTick() {
-            if (!audioEnabled || !audioCtx) return;
-            const now = ctx.currentTime;
-            const osc = ctx.createOscillator();
-            const g = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(220, now);
-            osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
-            g.gain.setValueAtTime(0.06, now);
-            g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-            osc.connect(g); g.connect(ctx.destination);
-            osc.start(now); osc.stop(now + 0.2);
-        }
-        ambientNodes._beatTimer = setInterval(beatTick, 800);
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, t);
+            if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, t + dur);
+            gain.gain.setValueAtTime(vol, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(t); osc.stop(t + dur + 0.01);
+        } catch(e) {}
     }
 
-    function stopAmbientLoop() {
-        if (ambientNodes._beatTimer) clearInterval(ambientNodes._beatTimer);
-        ambientNodes.forEach(n => {
-            try { if (n.stop) n.stop(); if (n.disconnect) n.disconnect(); } catch(e) {}
-        });
-        ambientNodes = [];
+    // 鼓聲
+    function kick(t) { sched(110, t, 0.18, 0.35, 'sine', 28); }
+    function snare(t) {
+        try {
+            const ctx = audioCtx;
+            const src = ctx.createBufferSource();
+            src.buffer = makeNoise(0.14);
+            const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 0.8;
+            const g = ctx.createGain(); g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+            src.connect(f); f.connect(g); g.connect(ctx.destination);
+            src.start(t); src.stop(t + 0.15);
+        } catch(e) {}
+        sched(200, t, 0.1, 0.08, 'triangle', 80);
+    }
+    function hihat(t, vol = 0.055) {
+        try {
+            const ctx = audioCtx;
+            const src = ctx.createBufferSource();
+            src.buffer = makeNoise(0.04);
+            const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 9000;
+            const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+            src.connect(f); f.connect(g); g.connect(ctx.destination);
+            src.start(t); src.stop(t + 0.05);
+        } catch(e) {}
     }
 
-    // 鼓擊滾動音（漸強鼓點）
-    let drumRollTimer = null;
-    function playDrumRoll(totalDuration = 3) {
-        if (!audioEnabled || !audioCtx) return;
-        const ctx = audioCtx;
+    // 一個 bar = 1.6 秒（BPM=150, 4拍）
+    function scheduleBar(barStart) {
+        if (!drawMusicActive || !audioEnabled || !audioCtx) return;
+        const B = 0.4; // 四分音符 = 0.4s
 
-        // 停止舊的
-        if (drumRollTimer) clearInterval(drumRollTimer);
+        // 鼓組
+        kick(barStart);           kick(barStart + B*2);
+        snare(barStart + B);      snare(barStart + B*3);
+        for (let i = 0; i < 8; i++) hihat(barStart + i * B * 0.5);
 
-        const startTime = Date.now();
-        let hitIndex = 0;
+        // 低音旋律（三角波）：C G A G
+        const bass = [130.81, 196.00, 220.00, 196.00];
+        bass.forEach((f, i) => sched(f, barStart + i * B, B * 0.85, 0.10, 'triangle'));
 
-        // 建立噪音緩衝器（鼓聲用）
-        function makeNoiseBuf(dur) {
-            const bufSize = Math.floor(ctx.sampleRate * dur);
-            const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-            const data = buf.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-            return buf;
-        }
+        // 主旋律（方波）：C E G C E G A G
+        const lead = [523.25, 659.25, 783.99, 1046.5, 783.99, 659.25, 880.00, 783.99];
+        lead.forEach((f, i) => sched(f, barStart + i * B * 0.5, B * 0.4, 0.065, 'square'));
 
-        // 單次鼓擊
-        function drumHit(volume) {
-            const now = ctx.currentTime;
-            // 低鼓
-            const osc = ctx.createOscillator();
-            const oscGain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(150, now);
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
-            oscGain.gain.setValueAtTime(volume * 0.4, now);
-            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-            osc.connect(oscGain); oscGain.connect(ctx.destination);
-            osc.start(now); osc.stop(now + 0.12);
+        // 和音（輕柔）
+        sched(659.25, barStart,       B * 1.8, 0.03, 'sine');
+        sched(783.99, barStart + B*2, B * 1.8, 0.03, 'sine');
 
-            // 噪音小鼓
-            const noise = ctx.createBufferSource();
-            noise.buffer = makeNoiseBuf(0.1);
-            const noiseFilter = ctx.createBiquadFilter();
-            noiseFilter.type = 'bandpass';
-            noiseFilter.frequency.value = 1800;
-            noiseFilter.Q.value = 0.8;
-            const noiseGain = ctx.createGain();
-            noiseGain.gain.setValueAtTime(volume * 0.3, now);
-            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-            noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(ctx.destination);
-            noise.start(now); noise.stop(now + 0.1);
-        }
-
-        // 動態節奏：先慢後快
-        function scheduleNextHit() {
-            const elapsed = (Date.now() - startTime) / 1000;
-            const progress = Math.min(elapsed / totalDuration, 1);
-
-            // 指數加速：從 400ms 加速到 80ms
-            const interval = 400 * Math.pow(0.2, progress);
-            const volume = 0.1 + progress * 0.25;
-
-            drumHit(volume);
-            hitIndex++;
-
-            if (elapsed < totalDuration) {
-                drumRollTimer = setTimeout(scheduleNextHit, interval);
-            }
-        }
-        scheduleNextHit();
+        // 排程下一個 bar
+        const barDur = B * 4;
+        const nextBar = barStart + barDur;
+        const delay = (nextBar - audioCtx.currentTime) * 1000 - 60;
+        drawMusicTimer = setTimeout(() => scheduleBar(nextBar), Math.max(10, delay));
     }
 
-    function stopDrumRoll() {
-        if (drumRollTimer) { clearTimeout(drumRollTimer); drumRollTimer = null; }
+    function startDrawingMusic() {
+        if (!audioEnabled) return;
+        try { ensureAudioCtx(); } catch(e) { return; }
+        stopDrawingMusic();
+        drawMusicActive = true;
+        scheduleBar(audioCtx.currentTime + 0.05);
     }
 
-    // 勝利號角旋律（六合彩風格）
+    function stopDrawingMusic() {
+        drawMusicActive = false;
+        if (drawMusicTimer) { clearTimeout(drawMusicTimer); drawMusicTimer = null; }
+    }
+
+    // 勝利號角旋律（Mario Course Clear，保持原有）
     function playFanfare() {
         if (!audioEnabled || !audioCtx) return;
         const ctx = audioCtx;
@@ -1318,9 +1280,8 @@
         document.getElementById('decorRing1').setAttribute('opacity', '1');
         document.getElementById('decorRing2').setAttribute('opacity', '1');
 
-        // 音樂
-        if (audioEnabled) ensureAudioCtx();
-        playDrumRoll(3);
+        // 攪珠音樂
+        startDrawingMusic();
 
         // 心心特效
         heartInterval = setInterval(() => {
@@ -1343,7 +1304,7 @@
     function extractBall() {
         isDrawing = false;
         settleTimer = 120;
-        stopDrumRoll();
+        stopDrawingMusic();
         if (heartInterval) clearInterval(heartInterval);
 
         // 移除機器效果
