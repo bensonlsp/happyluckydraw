@@ -214,20 +214,56 @@ function animateFireworks() {
 }
 
 // ====== 音頻引擎 ======
-function ensureAudioCtx() {
+async function ensureAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // iOS Safari 必須 await resume，否則 currentTime 仍凍結
+    if (audioCtx.state !== 'running') await audioCtx.resume();
     return audioCtx;
 }
 
-function toggleAudio() {
+async function toggleAudio() {
     audioEnabled = !audioEnabled;
     syncAudioUI();
     if (audioEnabled) {
-        try { ensureAudioCtx(); } catch (e) { audioEnabled = false; syncAudioUI(); }
+        try { await ensureAudioCtx(); } catch (e) { audioEnabled = false; syncAudioUI(); }
     } else {
-        stopDrawingMusic();
+        stopBgMusic();
     }
+}
+
+// ====== MP3 背景音樂（淡入淡出）======
+let bgFadeTimer = null;
+
+function startBgMusic() {
+    if (!audioEnabled) return;
+    const el = document.getElementById('bgMusic');
+    if (!el) return;
+    clearInterval(bgFadeTimer); bgFadeTimer = null;
+    el.currentTime = 0;
+    el.volume = 0;
+    el.play().catch(() => {}); // iOS 需在 user gesture 中呼叫
+    let vol = 0;
+    bgFadeTimer = setInterval(() => {
+        vol = Math.min(0.85, vol + 0.043); // ~1 秒淡入 (50ms × 20 步)
+        el.volume = vol;
+        if (vol >= 0.85) { clearInterval(bgFadeTimer); bgFadeTimer = null; }
+    }, 50);
+}
+
+function stopBgMusic() {
+    const el = document.getElementById('bgMusic');
+    if (!el) return;
+    clearInterval(bgFadeTimer);
+    let vol = el.volume;
+    bgFadeTimer = setInterval(() => {
+        vol = Math.max(0, vol - 0.043); // ~1 秒淡出
+        el.volume = vol;
+        if (vol <= 0) {
+            el.pause();
+            clearInterval(bgFadeTimer);
+            bgFadeTimer = null;
+        }
+    }, 50);
 }
 
 function syncAudioUI() {
@@ -669,7 +705,14 @@ function animateBalls() {
 }
 
 // ====== 主循環（合三為一，減少 rAF 開銷）======
-function mainLoop() {
+let _lastFrameTs = 0;
+function mainLoop(ts) {
+    // 手機限速 30fps（每幀至少間隔 33ms），桌面保持 60fps
+    if (isMobile && ts - _lastFrameTs < 33) {
+        animationFrameId = requestAnimationFrame(mainLoop);
+        return;
+    }
+    _lastFrameTs = ts;
     drawStars();
     animateFireworks();
     animateBalls();
@@ -695,7 +738,9 @@ function startDraw() {
     document.getElementById('decorRing1').setAttribute('opacity', '1');
     document.getElementById('decorRing2').setAttribute('opacity', '1');
 
-    startDrawingMusic();
+    // 在 user gesture 中確保 AudioContext 恢復（解決 iOS 無音效問題）
+    if (audioEnabled) ensureAudioCtx().catch(() => {});
+    startBgMusic();
 
     heartInterval = setInterval(() => {
         const container = document.getElementById('heartsContainer');
@@ -708,14 +753,14 @@ function startDraw() {
         setTimeout(() => heart.remove(), 2000);
     }, 150);
 
-    setTimeout(() => extractBall(), 3000);
+    setTimeout(() => extractBall(), 8000); // 搞珠時間延長至 8 秒（配合 MP3 前 ~10 秒）
 }
 
 // ====== 抽球動畫 ======
 function extractBall() {
     isDrawing = false;
     settleTimer = 120;
-    stopDrawingMusic();
+    stopBgMusic(); // MP3 淡出
     if (heartInterval) clearInterval(heartInterval);
 
     const wrapper = document.getElementById('machineWrapper');
