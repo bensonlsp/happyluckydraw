@@ -407,103 +407,59 @@ function stopDrawingMusic() {
     if (drawMusicTimer) { clearTimeout(drawMusicTimer); drawMusicTimer = null; }
 }
 
-// ====== 勝利號角（Mario Course Clear） ======
+// ====== 得獎音樂（The_Final_Draw.mp3，首 20 秒，fade in/out）======
+// 用 HTML <audio> 避免 iOS WebAudio context suspend 問題
+let fanfareFadeTimer = null;
+const FANFARE_MAX_VOL  = 0.92;
+const FANFARE_PLAY_MS  = 20000; // 播放總長（ms）
+const FANFARE_FADEIN_MS  = 1000; // fade in 時長
+const FANFARE_FADEOUT_MS = 2500; // fade out 時長，於結束前開始
+
 function playFanfare() {
-    if (!audioEnabled || !audioCtx) return;
-    // AudioContext 若 suspended（常見於 iOS），currentTime 會凍結
-    // → 所有音符均排在「過去」而靜音。自癒：resume 後重試。
-    if (audioCtx.state !== 'running') {
-        audioCtx.resume().then(() => playFanfare()).catch(() => {});
-        return;
-    }
-    const ctx = audioCtx;
+    if (!audioEnabled) return;
+    const el = document.getElementById('fanfareMusic');
+    if (!el) return;
 
-    function marioNote(freq, startSec, durSec, vol = 0.22) {
-        if (freq === 0) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const t = ctx.currentTime + startSec;
-        osc.type = 'square';
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.001, t);
-        gain.gain.linearRampToValueAtTime(vol, t + 0.008);
-        gain.gain.setValueAtTime(vol * 0.75, t + durSec * 0.5);
-        gain.gain.linearRampToValueAtTime(0.001, t + durSec);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(t); osc.stop(t + durSec + 0.02);
-    }
+    // iOS: 若 play() 在 user-gesture 之外被呼叫且 element 已預熱，仍可播放
+    clearInterval(fanfareFadeTimer);
+    el.currentTime = 0;
+    el.volume = 0;
+    el.play().catch(() => {});
 
-    function bassNote(freq, startSec, durSec, vol = 0.14) {
-        if (freq === 0) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const t = ctx.currentTime + startSec;
-        osc.type = 'triangle';
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(vol, t);
-        gain.gain.linearRampToValueAtTime(0.001, t + durSec);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(t); osc.stop(t + durSec + 0.02);
-    }
+    let elapsed = 0;
+    fanfareFadeTimer = setInterval(() => {
+        elapsed += 50;
+        const fadeOutStart = FANFARE_PLAY_MS - FANFARE_FADEOUT_MS;
 
-    function noiseHit(startSec, vol = 0.06, durSec = 0.05) {
-        const bufSize = Math.floor(ctx.sampleRate * durSec);
-        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        const g = ctx.createGain();
-        const t = ctx.currentTime + startSec;
-        g.gain.setValueAtTime(vol, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + durSec);
-        src.connect(g); g.connect(ctx.destination);
-        src.start(t); src.stop(t + durSec + 0.02);
-    }
+        if (elapsed <= FANFARE_FADEIN_MS) {
+            // 淡入
+            el.volume = Math.min(FANFARE_MAX_VOL, (elapsed / FANFARE_FADEIN_MS) * FANFARE_MAX_VOL);
+        } else if (elapsed >= fadeOutStart) {
+            // 淡出
+            const pct = (elapsed - fadeOutStart) / FANFARE_FADEOUT_MS;
+            el.volume = Math.max(0, FANFARE_MAX_VOL * (1 - pct));
+        } else {
+            el.volume = FANFARE_MAX_VOL;
+        }
 
-    const s = 0.1875, q = s * 2, h = s * 4;
-    const G4 = 392.00, A4 = 440.00, C5 = 523.25, D5 = 587.33,
-        Eb5 = 622.25, E5 = 659.25, G5 = 783.99, Ab5 = 830.61,
-        A5 = 880.00, C6 = 1046.5,
-        G3 = 196.00, C4 = 261.63, E4 = 329.63;
+        if (elapsed >= FANFARE_PLAY_MS) {
+            el.pause();
+            el.currentTime = 0;
+            el.volume = 0;
+            clearInterval(fanfareFadeTimer);
+            fanfareFadeTimer = null;
+        }
+    }, 50);
+}
 
-    marioNote(G4, 0 * s, s * 0.9);
-    marioNote(C5, 1 * s, s * 0.9);
-    marioNote(E5, 2 * s, s * 0.9);
-    marioNote(G5, 3 * s, q * 0.9);
-    marioNote(E5, 3 * s + q, s * 0.9);
-    marioNote(G5, 4 * s + q, q * 0.9);
-
-    const t2 = 5 * s + q;
-    marioNote(A5, t2, s * 0.9);
-    marioNote(Ab5, t2 + s, s * 0.9);
-    marioNote(G5, t2 + 2 * s, s * 0.9);
-    marioNote(Eb5, t2 + 3 * s, s * 0.9);
-    marioNote(E5, t2 + 4 * s, q * 0.9);
-
-    const t3 = t2 + 4 * s + q;
-    marioNote(G4, t3, s * 0.9);
-    marioNote(A4, t3 + s, s * 0.9);
-    marioNote(C5, t3 + 2 * s, q * 0.9);
-    marioNote(A4, t3 + 2 * s + q, s * 0.9);
-    marioNote(C5, t3 + 3 * s + q, s * 0.9);
-    marioNote(D5, t3 + 4 * s + q, q * 0.9);
-
-    const t4 = t3 + 4 * s + 2 * q;
-    marioNote(C6, t4, h, 0.28);
-    marioNote(G5, t4, h, 0.10);
-    marioNote(E5, t4, h, 0.08);
-
-    bassNote(G3, 0 * s, s * 0.9);
-    bassNote(C4, 1 * s, s * 0.9);
-    bassNote(E4, 2 * s, s * 0.9);
-    bassNote(G4, 3 * s, q * 0.9);
-    bassNote(G3, t2, s * 0.9);
-    bassNote(G3, t3, q * 0.9);
-    bassNote(C4, t4, h);
-
-    [0 * s, t2, t3, t4].forEach(t => noiseHit(t, 0.07, 0.06));
-    noiseHit(t4, 0.10, 0.12);
+function stopFanfare() {
+    const el = document.getElementById('fanfareMusic');
+    if (!el) return;
+    clearInterval(fanfareFadeTimer);
+    fanfareFadeTimer = null;
+    el.volume = 0;
+    el.pause();
+    el.currentTime = 0;
 }
 
 // ====== 裝飾燈跑馬燈 ======
@@ -830,8 +786,13 @@ function startDraw() {
     document.getElementById('decorRing1').setAttribute('opacity', '1');
     document.getElementById('decorRing2').setAttribute('opacity', '1');
 
-    // 在 user gesture 中確保 AudioContext 恢復（解決 iOS 無音效問題）
-    if (audioEnabled) ensureAudioCtx().catch(() => {});
+    // 在 user gesture 中確保 AudioContext 恢復，並預熱 fanfare <audio> 元素
+    // iOS 要求 play() 須在 user gesture 中首次呼叫，預熱後再 pause 即可解鎖
+    if (audioEnabled) {
+        ensureAudioCtx().catch(() => {});
+        const fw = document.getElementById('fanfareMusic');
+        if (fw) fw.play().then(() => fw.pause()).catch(() => {});
+    }
     startBgMusic();
 
     heartInterval = setInterval(() => {
@@ -943,11 +904,9 @@ function showResult(ballColor, ballNumber) {
             updatePool();
             updateWinnerList(winnerName, winnerColor, ballNumber);
 
-            stopBgMusic(true); // 250ms 快速淡出
-            // 保活振盪器令 context 持續 running，無需等待硬件釋放
-            // 號角播完後約 5 秒停止保活
+            stopBgMusic(true); // 250ms 快速淡出，與得獎音樂 crossfade
             if (audioEnabled) playFanfare();
-            stopAudioKeepAlive(5500);
+            stopAudioKeepAlive(FANFARE_PLAY_MS + 1000);
             launchMultipleFireworks();
             launchConfetti();
 
@@ -968,6 +927,7 @@ function showResult(ballColor, ballNumber) {
 
 function closeWinner() {
     document.getElementById('winnerDisplay').classList.remove('active');
+    stopFanfare(); // 關閉得獎畫面時淡出音樂
     balls.forEach(b => {
         if (drawnBallNumbers.has(b.number)) b.el.style.display = 'none';
     });
