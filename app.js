@@ -496,10 +496,9 @@ function startDecoLights() {
 // ====== 初始化 ======
 window.onload = () => {
     resizeCanvases();
-    loadState(); // 讀取上次已儲存的名單與紀錄
-    if (!document.getElementById('nameInput').value.trim()) {
-        document.getElementById('nameInput').value = defaultNames.join('\n');
-    }
+    loadState(); // 清除舊版遺留資料
+    // 每次重載都使用預設25人名單，不保留上次紀錄
+    document.getElementById('nameInput').value = defaultNames.join('\n');
     updatePool();
     initBalls();
     mainLoop(); // 單一主循環取代三個獨立 rAF
@@ -511,17 +510,13 @@ window.onload = () => {
 
 // ====== 狀態持久化 ======
 function saveState() {
-    try {
-        // 只儲存名單，得獎紀錄不跨 session 保留（每次重開頁面重新抽獎）
-        localStorage.setItem('luckydraw_names', document.getElementById('nameInput').value);
-    } catch (e) { }
+    // 名單與得獎紀錄均不跨 session 保留，重載永遠從預設名單開始
 }
 
 function loadState() {
     try {
-        const names = localStorage.getItem('luckydraw_names');
-        if (names !== null) document.getElementById('nameInput').value = names;
-        // 清除舊版本可能遺留的得獎紀錄
+        // 清除舊版本可能遺留的 localStorage 資料
+        localStorage.removeItem('luckydraw_names');
         localStorage.removeItem('luckydraw_winners');
     } catch (e) { }
 }
