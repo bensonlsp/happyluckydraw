@@ -184,32 +184,37 @@ body {
 .pool-flash { animation: flashGreen 0.5s ease-out forwards; }
 
 /* ── Name status list ── */
+/* 名單容器：限高後自動捲動，不撐開整個側邊欄 */
+#nameDisplayList {
+    max-height: 38vh;
+    overflow-y: auto;
+}
 .name-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 3px 6px;
-    border-radius: 4px;
-    font-size: 13px;
+    gap: 7px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    font-size: 14px;
     line-height: 1.4;
 }
 .name-item.remaining {
     color: white;
     font-weight: 500;
     background: rgba(255, 255, 255, 0.06);
-    margin-bottom: 1px;
+    margin-bottom: 2px;
 }
 .name-item.drawn {
     opacity: 0.38;
     color: #9ca3af;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
 }
 .name-item.drawn .name-label {
     text-decoration: line-through;
 }
 .name-status-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
 }
