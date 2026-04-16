@@ -72,12 +72,27 @@ body {
 }
 .machine-shaking { animation: machineShake 0.15s linear infinite; }
 
-@keyframes machineGlow {
-    /* box-shadow 由 GPU compositor 處理，比 filter:drop-shadow 便宜得多 */
-    0%, 100% { box-shadow: 0 0 15px rgba(255,200,50,0.3); }
-    50%       { box-shadow: 0 0 45px rgba(255,200,50,0.85), 0 0 80px rgba(255,100,50,0.35); }
+/* 圓形光暈覆蓋層：定位在 SVG 玻璃球上方，border-radius:50% 確保 box-shadow 呈圓形 */
+/* SVG viewBox=700×600，球心(350,250)半徑190。縮放後直徑≈54.3%，頂部偏移≈42.9% */
+#machineGlowRing {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    width: 56%;
+    aspect-ratio: 1 / 1;
+    left: 50%;
+    top: 43%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
 }
-.machine-glowing { animation: machineGlow 0.3s ease-in-out infinite; }
+
+@keyframes machineGlow {
+    /* box-shadow 作用在圓形 div 上，光暈輪廓跟隨球體形狀 */
+    0%, 100% { box-shadow: 0 0 18px rgba(255,200,50,0.35); }
+    50%       { box-shadow: 0 0 50px rgba(255,200,50,0.9), 0 0 90px rgba(255,120,50,0.45); }
+}
+/* 光暈動畫只套在圓形覆蓋層，不再影響整個 wrapper */
+.machine-glowing #machineGlowRing { animation: machineGlow 0.3s ease-in-out infinite; }
 
 /* ── Winner display ── */
 @keyframes popUp {

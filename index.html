@@ -195,6 +195,8 @@
             style="height:clamp(360px, calc(100svh - 260px), 840px); aspect-ratio:1/1; margin-top:0;">
             <!-- 聚光燈掃描效果 (攪珠中才顯示) -->
             <div class="spotlight-beam hidden" id="spotlightBeam"></div>
+            <!-- 圓形光暈覆蓋層：box-shadow 作用在圓形上，攪珠時呈球形閃光 -->
+            <div id="machineGlowRing"></div>
 
             <svg id="machineSvg" viewBox="0 0 700 600" class="w-full h-full drop-shadow-2xl">
                 <defs>
