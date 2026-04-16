@@ -651,8 +651,10 @@ function animateBalls() {
             const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
             if (speed > 16) { b.vx = (b.vx / speed) * 16; b.vy = (b.vy / speed) * 16; }
         } else {
-            // 純摩擦力沉降：球自然分散靜止，避免全部堆疊底部形成「進度條」視覺
-            b.vx *= 0.88; b.vy *= 0.88;
+            // 輕微重力（原 0.8 → 0.5）+ 水平擾動，自然下沉但不堆成緊密橫條
+            b.vy += 0.5;
+            b.vx += (Math.random() - 0.5) * 0.4;
+            b.vx *= 0.87; b.vy *= 0.87;
         }
 
         b.x += b.vx; b.y += b.vy;
