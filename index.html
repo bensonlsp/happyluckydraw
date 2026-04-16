@@ -72,6 +72,21 @@
             </div>
         </div>
 
+        <div class="glass-panel p-4 flex-1 flex flex-col">
+            <h2 class="text-xl font-bold mb-2 text-green-400 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                幸運兒紀錄
+            </h2>
+            <ul id="winnerList" class="flex-1 overflow-y-auto space-y-2 pr-2"></ul>
+            <button onclick="clearWinners()"
+                class="mt-4 w-full py-2 bg-red-500/50 hover:bg-red-500/80 rounded text-sm transition-colors border border-red-400">
+                清除紀錄重置
+            </button>
+        </div>
+
         <div class="glass-panel p-4 flex-1 flex flex-col transition-all duration-300" id="listPanel">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-xl font-bold text-yellow-300 flex items-center gap-2">
@@ -133,21 +148,6 @@
                     </button>
                 </div>
             </div>
-        </div>
-
-        <div class="glass-panel p-4 flex-1 flex flex-col">
-            <h2 class="text-xl font-bold mb-2 text-green-400 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                幸運兒紀錄
-            </h2>
-            <ul id="winnerList" class="flex-1 overflow-y-auto space-y-2 pr-2"></ul>
-            <button onclick="clearWinners()"
-                class="mt-4 w-full py-2 bg-red-500/50 hover:bg-red-500/80 rounded text-sm transition-colors border border-red-400">
-                清除紀錄重置
-            </button>
         </div>
 
     </aside>
