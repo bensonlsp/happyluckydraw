@@ -192,7 +192,7 @@
 
         <!-- SVG 攪珠機 -->
         <div class="relative" id="machineWrapper"
-            style="height:calc(100vh - 260px); max-height:840px; aspect-ratio:1/1; margin-top:0;">
+            style="height:clamp(360px, calc(100svh - 260px), 840px); aspect-ratio:1/1; margin-top:0;">
             <!-- 聚光燈掃描效果 (攪珠中才顯示) -->
             <div class="spotlight-beam hidden" id="spotlightBeam"></div>
 
@@ -309,11 +309,11 @@
         </div>
 
         <!-- 心心讚好特效容器 -->
-        <div id="heartsContainer" class="absolute inset-0 pointer-events-none z-20 overflow-hidden"></div>
+        <div id="heartsContainer" class="fixed inset-0 pointer-events-none z-20 overflow-hidden"></div>
 
         <!-- 顯示幸運兒的巨型六合彩球 -->
         <div id="winnerDisplay"
-            class="absolute inset-0 z-30 winner-ball-container items-center justify-center bg-black/60 backdrop-blur-sm">
+            class="fixed inset-0 z-30 winner-ball-container items-center justify-center bg-black/60 backdrop-blur-sm">
 
             <!-- 旋轉外光環 -->
             <div class="absolute" id="orbitContainer" style="display:flex;align-items:center;justify-content:center;">

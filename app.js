@@ -30,6 +30,22 @@ let animationFrameId;
 let mixerAngle = 0;
 let heartInterval = null;
 
+// 效能：初始化時偵測手機一次
+const isMobile = window.innerWidth < 768;
+
+// 煙火尾跡顏色輔助（修正十六進制顏色變白的 bug）
+function colorToRgba(color, alpha) {
+    if (color.startsWith('#')) {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+    }
+    if (color.startsWith('hsl(')) return color.replace('hsl(', 'hsla(').replace(')', `,${alpha})`);
+    if (color.startsWith('rgb(')) return color.replace('rgb(', 'rgba(').replace(')', `,${alpha})`);
+    return `rgba(255,255,255,${alpha})`;
+}
+
 // ====== 星空 Canvas ======
 const starsCanvas = document.getElementById('starsCanvas');
 const starsCtx = starsCanvas.getContext('2d');
@@ -39,7 +55,7 @@ function initStars() {
     starsCanvas.width = window.innerWidth;
     starsCanvas.height = window.innerHeight;
     starsArr = [];
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < (isMobile ? 50 : 120); i++) {
         starsArr.push({
             x: Math.random() * starsCanvas.width,
             y: Math.random() * starsCanvas.height * 0.7,
@@ -63,7 +79,7 @@ function drawStars() {
         starsCtx.fillStyle = `rgba(255,255,255,${Math.max(0, Math.min(1, s.alpha))})`;
         starsCtx.fill();
     });
-    requestAnimationFrame(drawStars);
+    // rAF 已由 mainLoop 驅動，此處不再自我排程
 }
 
 // ====== 煙火 / 彩帶 Canvas ======
@@ -140,7 +156,16 @@ function launchConfetti() {
     }
 }
 
+let fwWasActive = false;
 function animateFireworks() {
+    const isActive = fwParticles.length > 0 || confettiParticles.length > 0;
+    // 無粒子時跳過整個 canvas 操作（效能優化）
+    if (!isActive) {
+        if (fwWasActive) fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+        fwWasActive = false;
+        return;
+    }
+    fwWasActive = true;
     fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
 
     fwParticles = fwParticles.filter(p => p.life > 0);
@@ -157,7 +182,7 @@ function animateFireworks() {
             const alpha = (i / p.trail.length) * p.life * 0.5;
             fwCtx.beginPath();
             fwCtx.arc(t.x, t.y, p.size * 0.5, 0, Math.PI * 2);
-            fwCtx.fillStyle = p.color.replace(')', `,${alpha})`).replace('hsl(', 'hsla(').replace('rgb(', 'rgba(') || `rgba(255,255,255,${alpha})`;
+            fwCtx.fillStyle = colorToRgba(p.color, alpha); // 修正：支援十六進制顏色
             fwCtx.fill();
         });
 
@@ -185,8 +210,7 @@ function animateFireworks() {
         fwCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
         fwCtx.restore();
     });
-
-    requestAnimationFrame(animateFireworks);
+    // rAF 已由 mainLoop 驅動
 }
 
 // ====== 音頻引擎 ======
@@ -425,31 +449,60 @@ function startDecoLights() {
 // ====== 初始化 ======
 window.onload = () => {
     resizeCanvases();
-    document.getElementById('nameInput').value = defaultNames.join('\n');
+    loadState(); // 讀取上次已儲存的名單與紀錄
+    if (!document.getElementById('nameInput').value.trim()) {
+        document.getElementById('nameInput').value = defaultNames.join('\n');
+    }
     updatePool();
     initBalls();
-    animateBalls();
-    drawStars();
-    animateFireworks();
+    mainLoop(); // 單一主循環取代三個獨立 rAF
     startDecoLights();
 
     document.getElementById('winnerDisplay').addEventListener('click', closeWinner);
     document.getElementById('bigWinnerBall').addEventListener('click', e => e.stopPropagation());
 };
 
+// ====== 狀態持久化 ======
+function saveState() {
+    try {
+        localStorage.setItem('luckydraw_names', document.getElementById('nameInput').value);
+        localStorage.setItem('luckydraw_winners', JSON.stringify(winners));
+    } catch (e) { }
+}
+
+function loadState() {
+    try {
+        const names = localStorage.getItem('luckydraw_names');
+        const savedWinners = localStorage.getItem('luckydraw_winners');
+        if (names !== null) document.getElementById('nameInput').value = names;
+        if (savedWinners !== null) winners = JSON.parse(savedWinners);
+    } catch (e) { }
+}
+
 // ====== 名單管理 ======
 function updatePool() {
     if (isDrawing) return;
-    const text = document.getElementById('nameInput').value;
-    pool = text.split('\n')
-        .map(n => n.trim())
-        .filter(n => n !== '')
-        .filter(n => !winners.includes(n));
+    const allNames = document.getElementById('nameInput').value
+        .split('\n').map(n => n.trim()).filter(n => n !== '');
+
+    // 按得獎次數去除（支援同名參與者）
+    const wonCounts = {};
+    winners.forEach(w => { wonCounts[w] = (wonCounts[w] || 0) + 1; });
+    const remaining = [...allNames];
+    for (const [name, count] of Object.entries(wonCounts)) {
+        let removed = 0;
+        for (let i = remaining.length - 1; i >= 0 && removed < count; i--) {
+            if (remaining[i] === name) { remaining.splice(i, 1); removed++; }
+        }
+    }
+    pool = remaining;
+
     const el = document.getElementById('poolCount');
     el.innerText = pool.length;
     el.classList.remove('pool-flash');
     void el.offsetWidth;
     el.classList.add('pool-flash');
+    saveState();
 }
 
 function updateTitles() {
@@ -542,8 +595,15 @@ function animateBalls() {
     }
 
     const isFrozen = !isDrawing && settleTimer === 0;
-    const mixer = document.getElementById('mixerArm');
-    if (mixer) mixer.setAttribute('transform', `translate(${svgConfig.cx}, ${svgConfig.cy}) rotate(${mixerAngle})`);
+
+    // 攪珠時才更新旋臂（減少非必要 DOM 寫入）
+    if (isDrawing) {
+        const mixer = document.getElementById('mixerArm');
+        if (mixer) mixer.setAttribute('transform', `translate(${svgConfig.cx}, ${svgConfig.cy}) rotate(${mixerAngle})`);
+    }
+
+    // 靜止時跳過所有物理與 SVG 更新 — 最大效能節省
+    if (isFrozen) return;
 
     balls.forEach(b => {
         if (b.isWinning) return;
@@ -552,33 +612,29 @@ function animateBalls() {
             b.vy += (Math.random() - 0.5) * 6;
             const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
             if (speed > 16) { b.vx = (b.vx / speed) * 16; b.vy = (b.vy / speed) * 16; }
-        } else if (!isFrozen) {
-            b.vy += 0.8; b.vx *= 0.85; b.vy *= 0.85;
         } else {
-            b.vx = 0; b.vy = 0;
+            b.vy += 0.8; b.vx *= 0.85; b.vy *= 0.85;
         }
 
-        if (!isFrozen) {
-            b.x += b.vx; b.y += b.vy;
-            const dx = b.x - svgConfig.cx;
-            const dy = b.y - svgConfig.cy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > svgConfig.radius - svgConfig.ballRadius) {
-                const nx = dx / dist, ny = dy / dist;
-                const dot = b.vx * nx + b.vy * ny;
-                if (dot > 0) {
-                    const r = isDrawing ? 0.9 : 0.1;
-                    b.vx -= (1 + r) * dot * nx;
-                    b.vy -= (1 + r) * dot * ny;
-                }
-                b.x = svgConfig.cx + nx * (svgConfig.radius - svgConfig.ballRadius);
-                b.y = svgConfig.cy + ny * (svgConfig.radius - svgConfig.ballRadius);
+        b.x += b.vx; b.y += b.vy;
+        const dx = b.x - svgConfig.cx;
+        const dy = b.y - svgConfig.cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > svgConfig.radius - svgConfig.ballRadius) {
+            const nx = dx / dist, ny = dy / dist;
+            const dot = b.vx * nx + b.vy * ny;
+            if (dot > 0) {
+                const r = isDrawing ? 0.9 : 0.1;
+                b.vx -= (1 + r) * dot * nx;
+                b.vy -= (1 + r) * dot * ny;
             }
+            b.x = svgConfig.cx + nx * (svgConfig.radius - svgConfig.ballRadius);
+            b.y = svgConfig.cy + ny * (svgConfig.radius - svgConfig.ballRadius);
         }
     });
 
-    // 球與球碰撞 (O(n²) — acceptable for n=49)
-    if (!isFrozen) {
+    // 球與球碰撞：手機跳過以節省 CPU（O(n²) — acceptable for n=49 on desktop）
+    if (!isMobile) {
         for (let i = 0; i < balls.length; i++) {
             for (let j = i + 1; j < balls.length; j++) {
                 const b1 = balls[i], b2 = balls[j];
@@ -608,8 +664,15 @@ function animateBalls() {
     balls.forEach(b => {
         if (!b.isWinning) b.el.setAttribute('transform', `translate(${b.x}, ${b.y})`);
     });
+    // rAF 已由 mainLoop 驅動
+}
 
-    animationFrameId = requestAnimationFrame(animateBalls);
+// ====== 主循環（合三為一，減少 rAF 開銷）======
+function mainLoop() {
+    drawStars();
+    animateFireworks();
+    animateBalls();
+    animationFrameId = requestAnimationFrame(mainLoop);
 }
 
 // ====== 開始抽獎 ======
