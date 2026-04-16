@@ -411,9 +411,9 @@ function stopDrawingMusic() {
 // 用 HTML <audio> 避免 iOS WebAudio context suspend 問題
 let fanfareFadeTimer = null;
 const FANFARE_MAX_VOL  = 0.92;
-const FANFARE_PLAY_MS  = 20000; // 播放總長（ms）
-const FANFARE_FADEIN_MS  = 1000; // fade in 時長
-const FANFARE_FADEOUT_MS = 2500; // fade out 時長，於結束前開始
+const FANFARE_PLAY_MS  = 5000;  // 播放總長（ms）
+const FANFARE_FADEIN_MS  = 400;  // fade in 時長
+const FANFARE_FADEOUT_MS = 1200; // fade out 時長，於結束前開始
 
 function playFanfare() {
     if (!audioEnabled) return;
