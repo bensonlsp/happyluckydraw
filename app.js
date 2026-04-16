@@ -215,7 +215,10 @@ function animateFireworks() {
 
 // ====== 音頻引擎 ======
 async function ensureAudioCtx() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 若已 closed（例如被瀏覽器回收），重新建立
+    if (!audioCtx || audioCtx.state === 'closed') {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
     // iOS Safari 必須 await resume，否則 currentTime 仍凍結
     if (audioCtx.state !== 'running') await audioCtx.resume();
     return audioCtx;
@@ -379,6 +382,12 @@ function stopDrawingMusic() {
 // ====== 勝利號角（Mario Course Clear） ======
 function playFanfare() {
     if (!audioEnabled || !audioCtx) return;
+    // AudioContext 若 suspended（常見於 iOS），currentTime 會凍結
+    // → 所有音符均排在「過去」而靜音。自癒：resume 後重試。
+    if (audioCtx.state !== 'running') {
+        audioCtx.resume().then(() => playFanfare()).catch(() => {});
+        return;
+    }
     const ctx = audioCtx;
 
     function marioNote(freq, startSec, durSec, vol = 0.22) {
@@ -856,7 +865,9 @@ function showResult(ballColor, ballNumber) {
             updateWinnerList(winnerName, winnerColor, ballNumber);
 
             stopBgMusic(true); // 250ms 快速淡出，與得獎音效 crossfade
-            playFanfare();     // 同一刻啟動，無停頓
+            // 延遲 150ms：讓 HTML audio 釋放硬件後再啟動 WebAudio 號角
+            // （iOS 上兩者搶硬件資源可致號角靜音）
+            setTimeout(() => { if (audioEnabled) playFanfare(); }, 150);
             launchMultipleFireworks();
             launchConfetti();
 
