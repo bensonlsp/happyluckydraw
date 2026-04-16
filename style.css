@@ -183,6 +183,38 @@ body {
 }
 .pool-flash { animation: flashGreen 0.5s ease-out forwards; }
 
+/* ── Name status list ── */
+.name-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.name-item.remaining {
+    color: white;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.06);
+    margin-bottom: 2px;
+}
+.name-item.drawn {
+    opacity: 0.38;
+    color: #9ca3af;
+    margin-bottom: 2px;
+}
+.name-item.drawn .name-label {
+    text-decoration: line-through;
+}
+.name-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.name-item.remaining .name-status-dot { background: #fbbf24; }
+.name-item.drawn    .name-status-dot { background: #4ade80; }
+
 /* ── Help modal ── */
 #helpModal       { display: none; }
 #helpModal.open  { display: flex; }

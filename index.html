@@ -94,19 +94,30 @@
                 </button>
             </div>
             <div id="listContainer" class="flex-1 flex flex-col min-h-0">
-                <p class="text-xs text-gray-300 mb-2">請貼上參與者名字 (每行一個)</p>
+                <!-- 標題列：顯示模式下有「編輯名單」按鈕；編輯模式下隱藏 -->
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-xs text-gray-300">參與者名字 (每行一個)</p>
+                    <button id="editNamesBtn" onclick="enterEditMode()"
+                        class="text-xs text-yellow-300 hover:text-yellow-100 border border-yellow-400/50 hover:border-yellow-400 px-2 py-1 rounded transition-colors flex items-center gap-1">
+                        ✎ 編輯名單
+                    </button>
+                </div>
+                <!-- 【顯示模式】已抽名字劃線灰色，未抽白色 -->
+                <div id="nameDisplayList" class="flex-1 overflow-y-auto min-h-0 pr-1"></div>
+                <!-- 【編輯模式】textarea（預設隱藏） -->
                 <textarea id="nameInput"
-                    class="w-full flex-1 bg-black/30 border border-white/20 rounded p-2 text-sm text-white resize-none focus:outline-none focus:border-yellow-400"
+                    class="w-full flex-1 bg-black/30 border border-white/20 rounded p-2 text-sm text-white resize-none focus:outline-none focus:border-yellow-400 hidden"
                     placeholder="陳大文&#10;李小玲&#10;張三&#10;李四..."></textarea>
                 <div class="mt-2 text-sm text-gray-300 flex justify-between items-center">
                     <span>剩餘人數: <span id="poolCount"
                             class="font-bold text-white transition-all duration-300">0</span></span>
-                    <button onclick="updatePool()"
-                        class="bg-yellow-500/30 hover:bg-yellow-500/60 border border-yellow-400 text-yellow-200 text-xs px-3 py-1 rounded-full transition-colors active:scale-95">
+                    <!-- 「確認名單」只在編輯模式顯示 -->
+                    <button id="confirmNamesBtn" onclick="confirmNames()"
+                        class="hidden bg-yellow-500/30 hover:bg-yellow-500/60 border border-yellow-400 text-yellow-200 text-xs px-3 py-1 rounded-full transition-colors active:scale-95">
                         ✓ 確認名單
                     </button>
                 </div>
-                <p class="text-[11px] text-gray-400 mt-1">編輯名字後請按「確認名單」</p>
+                <p id="editHint" class="text-[11px] text-gray-400 mt-1 hidden">編輯名字後請按「確認名單」</p>
                 <!-- 音效開關 -->
                 <div class="mt-4 flex gap-2">
                     <button onclick="toggleAudio()" id="audioBtn"

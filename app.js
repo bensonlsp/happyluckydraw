@@ -550,6 +550,62 @@ function updatePool() {
     void el.offsetWidth;
     el.classList.add('pool-flash');
     saveState();
+    refreshNameDisplayList();
+}
+
+// ====== 名單顯示（已抽劃線、未抽白色）======
+function refreshNameDisplayList() {
+    const list = document.getElementById('nameDisplayList');
+    if (!list) return;
+
+    const allNames = document.getElementById('nameInput').value
+        .split('\n').map(n => n.trim()).filter(n => n !== '');
+
+    // 從後往前標記已抽者（與 updatePool 移除順序一致）
+    const wonCounts = {};
+    winners.forEach(w => { wonCounts[w] = (wonCounts[w] || 0) + 1; });
+    const tempWon = { ...wonCounts };
+    const drawn = new Array(allNames.length).fill(false);
+    for (let i = allNames.length - 1; i >= 0; i--) {
+        const n = allNames[i];
+        if (tempWon[n] > 0) { drawn[i] = true; tempWon[n]--; }
+    }
+
+    list.innerHTML = '';
+    allNames.forEach((name, i) => {
+        const item = document.createElement('div');
+        item.className = `name-item ${drawn[i] ? 'drawn' : 'remaining'}`;
+
+        const dot = document.createElement('span');
+        dot.className = 'name-status-dot';
+
+        const label = document.createElement('span');
+        label.className = 'name-label';
+        label.textContent = name;
+
+        item.appendChild(dot);
+        item.appendChild(label);
+        list.appendChild(item);
+    });
+}
+
+// ====== 名單編輯模式切換 ======
+function enterEditMode() {
+    document.getElementById('nameDisplayList').classList.add('hidden');
+    document.getElementById('nameInput').classList.remove('hidden');
+    document.getElementById('editNamesBtn').classList.add('hidden');
+    document.getElementById('confirmNamesBtn').classList.remove('hidden');
+    document.getElementById('editHint').classList.remove('hidden');
+    document.getElementById('nameInput').focus();
+}
+
+function confirmNames() {
+    updatePool(); // 更新 pool 並刷新顯示列表
+    document.getElementById('nameDisplayList').classList.remove('hidden');
+    document.getElementById('nameInput').classList.add('hidden');
+    document.getElementById('editNamesBtn').classList.remove('hidden');
+    document.getElementById('confirmNamesBtn').classList.add('hidden');
+    document.getElementById('editHint').classList.add('hidden');
 }
 
 function updateTitles() {
