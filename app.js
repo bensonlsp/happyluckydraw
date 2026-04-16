@@ -250,13 +250,15 @@ function startBgMusic() {
     }, 50);
 }
 
-function stopBgMusic() {
+// fast=false: ~1 秒正常淡出；fast=true: ~250ms 快速淡出（得獎瞬間用）
+function stopBgMusic(fast = false) {
     const el = document.getElementById('bgMusic');
     if (!el) return;
     clearInterval(bgFadeTimer);
     let vol = el.volume;
+    const step = fast ? 0.17 : 0.043;
     bgFadeTimer = setInterval(() => {
-        vol = Math.max(0, vol - 0.043); // ~1 秒淡出
+        vol = Math.max(0, vol - step);
         el.volume = vol;
         if (vol <= 0) {
             el.pause();
@@ -760,7 +762,7 @@ function startDraw() {
 function extractBall() {
     isDrawing = false;
     settleTimer = 120;
-    stopBgMusic(); // MP3 淡出
+    // 背景音樂繼續播放，製造緊張感直到得獎者揭曉——見 showResult()
     if (heartInterval) clearInterval(heartInterval);
 
     const wrapper = document.getElementById('machineWrapper');
@@ -851,7 +853,8 @@ function showResult(ballColor, ballNumber) {
             updatePool();
             updateWinnerList(winnerName, winnerColor, ballNumber);
 
-            playFanfare();
+            stopBgMusic(true); // 250ms 快速淡出，與得獎音效 crossfade
+            playFanfare();     // 同一刻啟動，無停頓
             launchMultipleFireworks();
             launchConfetti();
 
