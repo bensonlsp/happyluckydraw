@@ -203,12 +203,8 @@ body {
     }
 }
 
-/* ── Main area: allow internal scroll when viewport is too short ── */
-main {
-    overflow-y: auto;
-}
-
 /* ── Short viewport: align machine to top so it's reachable ── */
+/* overflow-y intentionally omitted — drop-shadow glow triggers scrollbar flash if set */
 @media (max-height: 480px) {
     main {
         justify-content: flex-start !important;
