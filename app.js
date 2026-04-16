@@ -512,17 +512,17 @@ window.onload = () => {
 // ====== 狀態持久化 ======
 function saveState() {
     try {
+        // 只儲存名單，得獎紀錄不跨 session 保留（每次重開頁面重新抽獎）
         localStorage.setItem('luckydraw_names', document.getElementById('nameInput').value);
-        localStorage.setItem('luckydraw_winners', JSON.stringify(winners));
     } catch (e) { }
 }
 
 function loadState() {
     try {
         const names = localStorage.getItem('luckydraw_names');
-        const savedWinners = localStorage.getItem('luckydraw_winners');
         if (names !== null) document.getElementById('nameInput').value = names;
-        if (savedWinners !== null) winners = JSON.parse(savedWinners);
+        // 清除舊版本可能遺留的得獎紀錄
+        localStorage.removeItem('luckydraw_winners');
     } catch (e) { }
 }
 
