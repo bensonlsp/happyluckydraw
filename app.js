@@ -231,7 +231,34 @@ async function toggleAudio() {
         try { await ensureAudioCtx(); } catch (e) { audioEnabled = false; syncAudioUI(); }
     } else {
         stopBgMusic();
+        stopAudioKeepAlive();
     }
+}
+
+// ====== iOS AudioContext 保活 ======
+// iOS 在無 active WebAudio node 時會 suspend context，導致 fanfare 靜音。
+// 以一個幾乎靜音的振盪器（1Hz，增益極小）持續掛在 destination，
+// 令 context 在整個抽獎過程保持 running 狀態。
+let _keepAliveOsc = null;
+
+function startAudioKeepAlive() {
+    if (!audioCtx || _keepAliveOsc) return;
+    try {
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0.00001; // 人耳完全無法感知
+        _keepAliveOsc = audioCtx.createOscillator();
+        _keepAliveOsc.frequency.value = 1; // 1Hz 次聲波
+        _keepAliveOsc.connect(gain);
+        gain.connect(audioCtx.destination);
+        _keepAliveOsc.start();
+    } catch (e) { _keepAliveOsc = null; }
+}
+
+function stopAudioKeepAlive(delayMs = 0) {
+    setTimeout(() => {
+        try { if (_keepAliveOsc) { _keepAliveOsc.stop(); _keepAliveOsc = null; } }
+        catch (e) { _keepAliveOsc = null; }
+    }, delayMs);
 }
 
 // ====== MP3 背景音樂（淡入淡出）======
@@ -245,6 +272,7 @@ function startBgMusic() {
     el.currentTime = 0;
     el.volume = 0;
     el.play().catch(() => {}); // iOS 需在 user gesture 中呼叫
+    startAudioKeepAlive(); // 啟動保活，防止 context 被 iOS suspend
     let vol = 0;
     bgFadeTimer = setInterval(() => {
         vol = Math.min(0.85, vol + 0.043); // ~1 秒淡入 (50ms × 20 步)
@@ -915,10 +943,11 @@ function showResult(ballColor, ballNumber) {
             updatePool();
             updateWinnerList(winnerName, winnerColor, ballNumber);
 
-            stopBgMusic(true); // 250ms 快速淡出，與得獎音效 crossfade
-            // 延遲 150ms：讓 HTML audio 釋放硬件後再啟動 WebAudio 號角
-            // （iOS 上兩者搶硬件資源可致號角靜音）
-            setTimeout(() => { if (audioEnabled) playFanfare(); }, 150);
+            stopBgMusic(true); // 250ms 快速淡出
+            // 保活振盪器令 context 持續 running，無需等待硬件釋放
+            // 號角播完後約 5 秒停止保活
+            if (audioEnabled) playFanfare();
+            stopAudioKeepAlive(5500);
             launchMultipleFireworks();
             launchConfetti();
 
