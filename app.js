@@ -613,7 +613,8 @@ function animateBalls() {
             const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
             if (speed > 16) { b.vx = (b.vx / speed) * 16; b.vy = (b.vy / speed) * 16; }
         } else {
-            b.vy += 0.8; b.vx *= 0.85; b.vy *= 0.85;
+            // 純摩擦力沉降：球自然分散靜止，避免全部堆疊底部形成「進度條」視覺
+            b.vx *= 0.88; b.vy *= 0.88;
         }
 
         b.x += b.vx; b.y += b.vy;
@@ -739,11 +740,15 @@ function extractBall() {
     const targetBall = availableBalls[Math.floor(Math.random() * availableBalls.length)];
     drawnBallNumbers.add(targetBall.number);
     targetBall.isWinning = true;
+    // 立即隱藏球，避免「瞬移」到管底的視覺跳動
+    targetBall.el.style.display = 'none';
     targetBall.x = svgConfig.tubeX;
     targetBall.y = svgConfig.tubeBottom;
+    targetBall.el.setAttribute('transform', `translate(${targetBall.x}, ${targetBall.y})`);
 
     let upSpeed = 0, flashCount = 0;
     const suckInterval = setInterval(() => {
+        targetBall.el.style.display = ''; // 開始移動時才顯示
         upSpeed += 0.5;
         targetBall.y -= upSpeed;
         targetBall.el.setAttribute('transform', `translate(${targetBall.x}, ${targetBall.y})`);
