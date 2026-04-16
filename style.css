@@ -187,28 +187,29 @@ body {
 .name-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 5px 8px;
-    border-radius: 6px;
-    font-size: 14px;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.4;
 }
 .name-item.remaining {
     color: white;
     font-weight: 500;
     background: rgba(255, 255, 255, 0.06);
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
 .name-item.drawn {
     opacity: 0.38;
     color: #9ca3af;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
 .name-item.drawn .name-label {
     text-decoration: line-through;
 }
 .name-status-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     flex-shrink: 0;
 }
