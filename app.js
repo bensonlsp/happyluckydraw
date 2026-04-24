@@ -490,6 +490,20 @@ window.onload = () => {
 
     document.getElementById('winnerDisplay').addEventListener('click', closeWinner);
     document.getElementById('bigWinnerBall').addEventListener('click', e => e.stopPropagation());
+
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        // 忽略在 input/textarea 中的按鍵
+        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+        e.preventDefault();
+        const winnerVisible = document.getElementById('winnerDisplay').classList.contains('active');
+        if (winnerVisible) {
+            closeWinner();
+        } else {
+            const btn = document.getElementById('drawBtn');
+            if (!btn.disabled) startDraw();
+        }
+    });
 };
 
 // ====== 狀態持久化 ======
