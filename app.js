@@ -491,10 +491,11 @@ window.onload = () => {
     document.getElementById('winnerDisplay').addEventListener('click', closeWinner);
     document.getElementById('bigWinnerBall').addEventListener('click', e => e.stopPropagation());
 
-    document.addEventListener('keydown', e => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        // 忽略在 input/textarea 中的按鍵
-        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+    window.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'Space') return;
+        if (e.isComposing) return; // 忽略中文輸入法組字階段
+        const tag = document.activeElement ? document.activeElement.tagName : '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
         e.preventDefault();
         const winnerVisible = document.getElementById('winnerDisplay').classList.contains('active');
         if (winnerVisible) {
@@ -503,7 +504,7 @@ window.onload = () => {
             const btn = document.getElementById('drawBtn');
             if (!btn.disabled) startDraw();
         }
-    });
+    }, true); // capture=true，優先於其他 listener
 };
 
 // ====== 狀態持久化 ======
